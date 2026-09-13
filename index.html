@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AngkorPC Style - Movie & Digital Store</title>
+    <title>Angkor Media - វេបសាយទស្សនារឿងកម្សាន្ត</title>
     <!-- QRCode Generator Script -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
@@ -129,7 +129,7 @@
             border-color: #0b3b60;
         }
 
-        /* ── Product/Movie Grid បែប Store Card ── */
+        /* ── Product/Movie Grid ── */
         .container {
             padding: 20px 5%;
         }
@@ -289,7 +289,7 @@
         .topup-card {
             background-color: #fff;
             width: 90%;
-            max-width: 380px;
+            max-width: 400px;
             border-radius: 8px;
             padding: 25px;
             text-align: center;
@@ -302,6 +302,9 @@
             padding: 5px;
             border: 1px solid #ddd;
             border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
     </style>
 </head>
@@ -317,7 +320,7 @@
 
     <div class="sub-header">
         <div class="search-box">
-            <input type="text" id="searchInput" placeholder="ស្វែងរករឿង ឬទំនិញ..." onkeyup="filterMovies()">
+            <input type="text" id="searchInput" placeholder="ស្វែងរករឿង..." onkeyup="filterMovies()">
         </div>
         <div class="filter-bar">
             <button class="filter-btn active" onclick="setCategory('all')">ទាំងអស់</button>
@@ -342,20 +345,33 @@
         </div>
     </div>
 
-    <!-- Modal Top Up -->
+    <!-- Modal Top Up (Scan KHQR និង ផ្ញើ Slip) -->
     <div class="modal" id="topupModal">
         <div class="topup-card">
-            <h3 style="color:#0b3b60; margin-bottom:5px;">💳 ដាក់ប្រាក់ KHQR</h3>
-            <p style="color:#666; font-size: 13px;">ស្កេន Bakong ដើម្បីបញ្ចូលសមតុល្យ</p>
+            <h3 style="color:#0b3b60; margin-bottom:5px;">💳 ដាក់ប្រាក់តាម Bakong KHQR</h3>
+            <p style="color:#666; font-size: 13px;">សូមស្កេន QR ខាងក្រោមដើម្បីផ្ទេរប្រាក់</p>
+            
             <div class="qr-placeholder" id="qrContainer"></div>
-            <p style="font-size: 13px; color:#333; margin-bottom: 5px;">គណនី: <b>Smey Lov (Bakong)</b></p>
-            <p style="font-size: 13px; color:#666; margin-bottom: 15px;">ចំនួនទឹកប្រាក់: <b>$5.00</b></p>
-            <button class="btn-topup" style="width:100%; border-radius:5px; padding:10px;" onclick="mockDeposit(5.00)">✅ ខ្ញុំបានស្កេនផ្ទេររួចរាល់ ($5.00)</button>
-            <button onclick="closeTopUpModal()" style="margin-top:10px; background:none; border:none; color:#888; cursor:pointer;">បោះបង់</button>
+            
+            <div style="background:#f8f9fa; border:1px solid #e9ecef; border-radius:6px; padding:10px; margin:12px 0; font-size:13px; text-align:left;">
+                <p>👤 ឈ្មោះគណនី: <b>Smey Lov</b></p>
+                <p>🏦 Bakong ID: <b>samnang_mon@bkrt</b></p>
+            </div>
+
+            <p style="font-size: 12px; color:#d9232d; margin-bottom: 15px;">
+                * បន្ទាប់ពីផ្ទេរប្រាក់រួច សូមចុចប៊ូតុងខាងក្រោមដើម្បីផ្ញើវិក្កយបត្រ (Slip) ជូន Admin បញ្ចូលសមតុល្យជូន!
+            </p>
+
+            <a href="https://t.me/SmeyLov008" target="_blank" class="btn-topup" style="display:block; text-decoration:none; width:100%; border-radius:5px; padding:10px; background:#0088cc;">
+                ✈️ ផ្ញើវិក្កយបត្រទៅកាន់ Admin
+            </a>
+            
+            <button onclick="closeTopUpModal()" style="margin-top:12px; background:none; border:none; color:#888; cursor:pointer; font-size:13px;">បិទផ្ទាំង</button>
         </div>
     </div>
 
     <script>
+        // អានសមតុល្យជាក់ស្តែងពី LocalStorage
         let userBalance = parseFloat(localStorage.getItem("user_balance")) || 0.00;
 
         const movies = [
@@ -404,6 +420,11 @@
             const container = document.getElementById("movieContainer");
             container.innerHTML = "";
 
+            if (data.length === 0) {
+                container.innerHTML = "<p style='grid-column: 1/-1; text-align:center; padding:30px; color:#888;'>រកមិនឃើញរឿងដែលស្វែងរកទេ!</p>";
+                return;
+            }
+
             data.forEach(m => {
                 const card = document.createElement("div");
                 card.className = "product-card";
@@ -435,11 +456,13 @@
             const modalBody = document.getElementById("modalBody");
             document.getElementById("modalHeaderTitle").innerText = movie.title;
 
+            // ១. បើជារឿង Free -> បើកមើលភ្លាម
             if (movie.category === "free") {
                 playVideo(movie.videoUrl);
                 return;
             }
 
+            // ២. បើជារឿង VIP
             if (userBalance < movie.price) {
                 modalBody.innerHTML = `
                     <div class="lock-container">
@@ -490,6 +513,7 @@
             document.getElementById("videoModal").style.display = "none";
         }
 
+        /* ── Modal Bakong KHQR ── */
         function openTopUpModal() {
             const qrBox = document.getElementById("qrContainer");
             qrBox.innerHTML = "";
@@ -500,13 +524,6 @@
 
         function closeTopUpModal() {
             document.getElementById("topupModal").style.display = "none";
-        }
-
-        function mockDeposit(amount) {
-            userBalance += amount;
-            updateBalanceDisplay();
-            alert(`✅ ជោគជ័យ! សមតុល្យរបស់អ្នកបានកើនឡើង +$${amount.toFixed(2)}`);
-            closeTopUpModal();
         }
 
         function setCategory(cat) {
@@ -526,6 +543,7 @@
             renderMovies(filtered);
         }
 
+        // ចាប់ផ្តើមដំណើរការ
         updateBalanceDisplay();
         renderMovies(movies);
     </script>
