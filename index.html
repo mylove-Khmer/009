@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Angkor Media - វេបសាយទស្សនារឿងកម្សាន្ត</title>
-    <!-- QRCode Generator Script -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -20,7 +18,7 @@
             padding-bottom: 60px;
         }
 
-        /* ── Header បែប AngkorPC (ពណ៌ខៀវចាស់) ── */
+        /* ── Header បែប AngkorPC ── */
         header {
             background-color: #0b3b60;
             color: #fff;
@@ -43,9 +41,7 @@
             gap: 8px;
         }
 
-        .logo span {
-            color: #fff;
-        }
+        .logo span { color: #fff; }
 
         .user-panel {
             display: flex;
@@ -102,9 +98,7 @@
             font-size: 14px;
         }
 
-        .search-box input:focus {
-            border-color: #0b3b60;
-        }
+        .search-box input:focus { border-color: #0b3b60; }
 
         .filter-bar {
             display: flex;
@@ -129,7 +123,7 @@
             border-color: #0b3b60;
         }
 
-        /* ── Product/Movie Grid ── */
+        /* ── Product Grid ── */
         .container {
             padding: 20px 5%;
         }
@@ -231,7 +225,7 @@
 
         .btn-view:hover { background-color: #082842; }
 
-        /* ── Popup Modal ── */
+        /* ── Modals ── */
         .modal {
             display: none;
             position: fixed;
@@ -297,14 +291,21 @@
 
         .qr-placeholder {
             margin: 15px auto;
-            width: 180px;
-            height: 180px;
+            width: 200px;
+            height: 200px;
             padding: 5px;
             border: 1px solid #ddd;
             border-radius: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
+            background: #fff;
+        }
+
+        .qr-placeholder img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
         }
     </style>
 </head>
@@ -345,13 +346,15 @@
         </div>
     </div>
 
-    <!-- Modal Top Up (Scan KHQR និង ផ្ញើ Slip) -->
+    <!-- Modal Top Up (បង្ហាញរូប QR ធនាគារផ្ទាល់) -->
     <div class="modal" id="topupModal">
         <div class="topup-card">
             <h3 style="color:#0b3b60; margin-bottom:5px;">💳 ដាក់ប្រាក់តាម Bakong KHQR</h3>
             <p style="color:#666; font-size: 13px;">សូមស្កេន QR ខាងក្រោមដើម្បីផ្ទេរប្រាក់</p>
             
-            <div class="qr-placeholder" id="qrContainer"></div>
+            <div class="qr-placeholder" id="qrContainer">
+                <img src="my_qr.png" alt="Bakong QR Code">
+            </div>
             
             <div style="background:#f8f9fa; border:1px solid #e9ecef; border-radius:6px; padding:10px; margin:12px 0; font-size:13px; text-align:left;">
                 <p>👤 ឈ្មោះគណនី: <b>Smey Lov</b></p>
@@ -371,7 +374,6 @@
     </div>
 
     <script>
-        // អានសមតុល្យជាក់ស្តែងពី LocalStorage
         let userBalance = parseFloat(localStorage.getItem("user_balance")) || 0.00;
 
         const movies = [
@@ -456,13 +458,11 @@
             const modalBody = document.getElementById("modalBody");
             document.getElementById("modalHeaderTitle").innerText = movie.title;
 
-            // ១. បើជារឿង Free -> បើកមើលភ្លាម
             if (movie.category === "free") {
                 playVideo(movie.videoUrl);
                 return;
             }
 
-            // ២. បើជារឿង VIP
             if (userBalance < movie.price) {
                 modalBody.innerHTML = `
                     <div class="lock-container">
@@ -513,12 +513,7 @@
             document.getElementById("videoModal").style.display = "none";
         }
 
-        /* ── Modal Bakong KHQR ── */
         function openTopUpModal() {
-            const qrBox = document.getElementById("qrContainer");
-            qrBox.innerHTML = "";
-            const myKHQR = "00020101021129370016samnang_mon@bkrt0116samnang_mon@bkrt5204599953038405802KH5908Smey Lov6010Phnom Penh6304ABCD";
-            new QRCode(qrBox, { text: myKHQR, width: 170, height: 170 });
             document.getElementById("topupModal").style.display = "flex";
         }
 
@@ -543,7 +538,6 @@
             renderMovies(filtered);
         }
 
-        // ចាប់ផ្តើមដំណើរការ
         updateBalanceDisplay();
         renderMovies(movies);
     </script>
