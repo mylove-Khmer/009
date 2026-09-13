@@ -20,7 +20,6 @@
             padding-bottom: 60px;
         }
 
-        /* ── Header បែប AngkorPC ── */
         header {
             background-color: #0b3b60;
             color: #fff;
@@ -79,7 +78,6 @@
 
         .btn-topup:hover { background-color: #e68a00; }
 
-        /* ── Search & Filter Bar ── */
         .sub-header {
             background-color: #fff;
             padding: 15px 5%;
@@ -125,7 +123,6 @@
             border-color: #0b3b60;
         }
 
-        /* ── Product Grid ── */
         .container {
             padding: 20px 5%;
         }
@@ -227,7 +224,6 @@
 
         .btn-view:hover { background-color: #082842; }
 
-        /* ── Modals ── */
         .modal {
             display: none;
             position: fixed;
@@ -366,11 +362,11 @@
         </div>
     </div>
 
-    <!-- Modal Top Up -->
+    <!-- Modal Top Up (Dynamic KHQR ជាប់ចំនួនលុយ) -->
     <div class="modal" id="topupModal">
         <div class="topup-card">
             <h3 style="color:#0b3b60; margin-bottom:4px;">💳 ដាក់ប្រាក់តាម KHQR</h3>
-            <p style="color:#666; font-size: 13px;">ជ្រើសរើសចំនួនទឹកប្រាក់ដែលអ្នកចង់ដាក់៖</p>
+            <p style="color:#666; font-size: 13px;">ជ្រើសរើសចំនួនទឹកប្រាក់ដែលចង់ដាក់៖</p>
             
             <div class="amount-selector">
                 <button class="amt-btn active" onclick="selectDepositAmount(1.00, this)">$1.00</button>
@@ -383,11 +379,14 @@
 
             <div class="qr-placeholder" id="qrContainer"></div>
             
-            <div style="background:#eef6fc; border:1px solid #bde0fe; border-radius:6px; padding:10px 12px; margin:10px 0; font-size:13px; text-align:left;">
+            <div style="background:#eef6fc; border:1px solid #bde0fe; border-radius:6px; padding:8px 12px; margin:10px 0; font-size:13px; text-align:left;">
                 <p>👤 ឈ្មោះគណនី: <b>Smey Lov</b></p>
-                <p>👉 ទឹកប្រាក់ត្រូវផ្ទេរ: <b id="displayLockedAmount" style="color:#d9232d; font-size:16px;">$1.00</b></p>
-                <p style="color:#555; font-size:12px; margin-top:3px;"><i>* សូមបញ្ចូលទឹកប្រាក់ចំនួនខាងលើនេះក្នុង App ធនាគាររបស់អ្នក</i></p>
+                <p>💰 ទឹកប្រាក់ចាក់សោស្វ័យប្រវត្តិ: <b id="displayLockedAmount" style="color:#d9232d; font-size:16px;">$1.00</b></p>
             </div>
+
+            <p style="font-size: 12px; color:#666; margin-bottom: 12px;">
+                * ស្កេនរួច ទឹកប្រាក់នឹងចេញជាប់ក្នុងធនាគារស្រាប់។ សូមផ្ញើ Slip ជូន Admin ដើម្បីបញ្ចូលសមតុល្យ៖
+            </p>
 
             <a href="https://t.me/SmeyLov008" target="_blank" class="btn-topup" style="display:block; text-decoration:none; width:100%; border-radius:5px; padding:10px; background:#0088cc;">
                 ✈️ ផ្ញើវិក្កយបត្រ (Slip) ជូន Admin
@@ -538,7 +537,7 @@
             document.getElementById("videoModal").style.display = "none";
         }
 
-        /* ── ក្បួនគណនា Static KHQR (ស្ដង់ដារបុគ្គល 100% Valid សម្រាប់ ABA & Bakong) ── */
+        /* ── ក្បួនគណនា Dynamic KHQR (ចាក់សោចំនួនលុយជាប់ស្វ័យប្រវត្តិ) ── */
         function calculateCRC16(data) {
             let crc = 0xFFFF;
             for (let i = 0; i < data.length; i++) {
@@ -559,21 +558,24 @@
             return tag + len + val;
         }
 
-        function generateBakongKHQR() {
+        function generateDynamicKHQR(amount) {
             const bankAccount = "samnang_mon@bkrt";
             const merchantName = "Smey Lov";
             const merchantCity = "Phnom Penh";
+            const amtStr = Number(amount).toFixed(2);
 
             // Tag 29 បុគ្គលតាមស្តង់ដារ NBC
             const sub29 = formatTag("00", bankAccount) + formatTag("01", bankAccount);
             
+            // EMVCo Payload បំពាក់ Tag 01="12" (Dynamic) និង Tag 54 (Amount)
             let payload = 
-                formatTag("00", "01") +             // Payload Format Indicator
-                formatTag("01", "11") +             // 11 = Static QR (ស្តង់ដារគណនីបុគ្គល)
+                formatTag("00", "01") +             // Payload Indicator
+                formatTag("01", "12") +             // 12 = Dynamic QR (ចាក់សោទឹកប្រាក់)
                 formatTag("29", sub29) +            // Merchant Account
                 formatTag("52", "5999") +           // MCC
                 formatTag("53", "840") +            // Currency USD
-                formatTag("58", "KH") +             // Country KH
+                formatTag("54", amtStr) +           // Transaction Amount
+                formatTag("58", "KH") +             // Country
                 formatTag("59", merchantName) +     // Name
                 formatTag("60", merchantCity);      // City
 
@@ -582,28 +584,28 @@
             return payload + crc;
         }
 
-        function renderQR() {
+        function renderQR(amount) {
             const qrBox = document.getElementById("qrContainer");
             qrBox.innerHTML = "";
-            const khqrString = generateBakongKHQR();
+            const khqrString = generateDynamicKHQR(amount);
             new QRCode(qrBox, {
                 text: khqrString,
                 width: 180,
                 height: 180
             });
+            document.getElementById("displayLockedAmount").innerText = `$${Number(amount).toFixed(2)}`;
         }
 
         function selectDepositAmount(amt, btnElement) {
             selectedAmount = amt;
             document.querySelectorAll(".amt-btn").forEach(b => b.classList.remove("active"));
             if (btnElement) btnElement.classList.add("active");
-            document.getElementById("displayLockedAmount").innerText = `$${Number(amt).toFixed(2)}`;
+            renderQR(selectedAmount);
         }
 
         function openTopUpModal() {
             document.getElementById("topupModal").style.display = "flex";
-            renderQR();
-            document.getElementById("displayLockedAmount").innerText = `$${Number(selectedAmount).toFixed(2)}`;
+            renderQR(selectedAmount);
         }
 
         function closeTopUpModal() {
@@ -627,7 +629,7 @@
             renderMovies(filtered);
         }
 
-        // Run
+        // Init
         updateBalanceDisplay();
         renderMovies(movies);
     </script>
