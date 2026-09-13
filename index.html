@@ -285,14 +285,39 @@
         .topup-card {
             background-color: #fff;
             width: 90%;
-            max-width: 400px;
+            max-width: 420px;
             border-radius: 8px;
-            padding: 25px;
+            padding: 22px;
             text-align: center;
         }
 
+        /* ប៊ូតុងរើសចំនួនលុយ */
+        .amount-selector {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin: 12px 0;
+        }
+
+        .amt-btn {
+            background: #f0f2f5;
+            border: 1px solid #ccc;
+            padding: 8px 0;
+            border-radius: 6px;
+            font-weight: bold;
+            color: #0b3b60;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .amt-btn.active, .amt-btn:hover {
+            background: #0b3b60;
+            color: #fff;
+            border-color: #0b3b60;
+        }
+
         .qr-placeholder {
-            margin: 15px auto;
+            margin: 12px auto;
             width: 190px;
             height: 190px;
             padding: 5px;
@@ -342,34 +367,43 @@
         </div>
     </div>
 
-    <!-- Modal Top Up (Native KHQR Generator តាមស្តង់ដារ ABA) -->
+    <!-- Modal Top Up (ជ្រើសរើសលុយ + ចាក់សោ Dynamic KHQR) -->
     <div class="modal" id="topupModal">
         <div class="topup-card">
-            <h3 style="color:#0b3b60; margin-bottom:5px;">💳 ដាក់ប្រាក់តាម Bakong KHQR</h3>
-            <p style="color:#666; font-size: 13px;">ស្កេនជាមួយ ABA, Bakong, Wing ដើម្បីផ្ទេរប្រាក់</p>
+            <h3 style="color:#0b3b60; margin-bottom:4px;">💳 ដាក់ប្រាក់តាម KHQR</h3>
+            <p style="color:#666; font-size: 13px;">សូមជ្រើសរើសចំនួនទឹកប្រាក់ដែលចង់ដាក់៖</p>
             
-            <div class="qr-placeholder" id="qrContainer"></div>
-            
-            <div style="background:#f8f9fa; border:1px solid #e9ecef; border-radius:6px; padding:10px; margin:12px 0; font-size:13px; text-align:left;">
-                <p>👤 ឈ្មោះគណនី: <b>Smey Lov</b></p>
-                <p>🏦 Bakong ID: <b>samnang_mon@bkrt</b></p>
-                <p>💵 រូបិយប័ណ្ណ: <b>USD ($)</b></p>
+            <div class="amount-selector">
+                <button class="amt-btn active" onclick="selectDepositAmount(1.00, this)">$1.00</button>
+                <button class="amt-btn" onclick="selectDepositAmount(2.00, this)">$2.00</button>
+                <button class="amt-btn" onclick="selectDepositAmount(5.00, this)">$5.00</button>
+                <button class="amt-btn" onclick="selectDepositAmount(10.00, this)">$10.00</button>
+                <button class="amt-btn" onclick="selectDepositAmount(20.00, this)">$20.00</button>
+                <button class="amt-btn" onclick="selectDepositAmount(50.00, this)">$50.00</button>
             </div>
 
-            <p style="font-size: 12px; color:#d9232d; margin-bottom: 15px;">
-                * បន្ទាប់ពីផ្ទេរប្រាក់រួច សូមចុចប៊ូតុងខាងក្រោមដើម្បីផ្ញើវិក្កយបត្រ (Slip) ជូន Admin បញ្ចូលសមតុល្យជូន!
+            <div class="qr-placeholder" id="qrContainer"></div>
+            
+            <div style="background:#f8f9fa; border:1px solid #e9ecef; border-radius:6px; padding:8px 12px; margin:10px 0; font-size:13px; text-align:left;">
+                <p>👤 ឈ្មោះ: <b>Smey Lov</b></p>
+                <p>💰 ចំនួនទឹកប្រាក់ចាក់សោ: <b id="displayLockedAmount" style="color:#d9232d; font-size:15px;">$1.00</b></p>
+            </div>
+
+            <p style="font-size: 12px; color:#666; margin-bottom: 12px;">
+                * ស្កេនជាមួយ ABA / Bakong ទឹកប្រាក់នឹងលោតស្វ័យប្រវត្តិតែម្តង។ បន្ទាប់មកផ្ញើ Slip ជូន Admin ដើម្បីបញ្ចូលសមតុល្យ៖
             </p>
 
             <a href="https://t.me/SmeyLov008" target="_blank" class="btn-topup" style="display:block; text-decoration:none; width:100%; border-radius:5px; padding:10px; background:#0088cc;">
                 ✈️ ផ្ញើវិក្កយបត្រទៅកាន់ Admin
             </a>
             
-            <button onclick="closeTopUpModal()" style="margin-top:12px; background:none; border:none; color:#888; cursor:pointer; font-size:13px;">បិទផ្ទាំង</button>
+            <button onclick="closeTopUpModal()" style="margin-top:10px; background:none; border:none; color:#888; cursor:pointer; font-size:13px;">បិទផ្ទាំង</button>
         </div>
     </div>
 
     <script>
         let userBalance = parseFloat(localStorage.getItem("user_balance")) || 0.00;
+        let selectedAmount = 1.00;
 
         const movies = [
             {
@@ -508,7 +542,7 @@
             document.getElementById("videoModal").style.display = "none";
         }
 
-        /* ── ក្បួនគណនា Bakong EMVCo KHQR & CRC16 តាមស្តង់ដារ ABA/NBC ── */
+        /* ── ក្បួនគណនា Dynamic KHQR (ចាក់សោចំនួនលុយក្នុង App ធនាគារ) ── */
         function calculateCRC16(data) {
             let crc = 0xFFFF;
             for (let i = 0; i < data.length; i++) {
@@ -529,42 +563,52 @@
             return tag + len + val;
         }
 
-        function generateBakongKHQR() {
+        function generateDynamicKHQR(amount) {
             const bankAccount = "samnang_mon@bkrt";
             const merchantName = "Smey Lov";
             const merchantCity = "Phnom Penh";
+            const amtStr = Number(amount).toFixed(2);
 
-            // Tag 29: Bakong Account Info (បំពាក់ទាំង 00 និង 01 ត្រឹមត្រូវតាមស្ដង់ដារ)
             const sub29 = formatTag("00", bankAccount) + formatTag("01", bankAccount);
             
             let payload = 
-                formatTag("00", "01") +             // Payload Format Indicator
-                formatTag("01", "11") +             // 11 = Static QR (ភ្ញៀវវាយចំនួនទឹកប្រាក់ខ្លួនឯង)
-                formatTag("29", sub29) +            // Merchant Account Information
-                formatTag("52", "5999") +           // Merchant Category Code
-                formatTag("53", "840") +            // 840 = USD (ចាំបាច់សម្រាប់ ABA)
-                formatTag("58", "KH") +             // Country Code
-                formatTag("59", merchantName) +     // Merchant Name
-                formatTag("60", merchantCity);      // Merchant City
+                formatTag("00", "01") +             // Payload Format
+                formatTag("01", "12") +             // 12 = Dynamic QR (ចាក់សោទឹកប្រាក់)
+                formatTag("29", sub29) +            // Merchant Account
+                formatTag("52", "5999") +           // Category
+                formatTag("53", "840") +            // Currency = USD
+                formatTag("54", amtStr) +           // Tag 54 = ចំនួនទឹកប្រាក់ចាក់សោ
+                formatTag("58", "KH") +             // Country
+                formatTag("59", merchantName) +     // Name
+                formatTag("60", merchantCity);      // City
 
             payload += "6304";
             const crc = calculateCRC16(payload);
             return payload + crc;
         }
 
-        function openTopUpModal() {
+        function renderQR(amount) {
             const qrBox = document.getElementById("qrContainer");
             qrBox.innerHTML = "";
-
-            const khqrString = generateBakongKHQR();
-
+            const khqrString = generateDynamicKHQR(amount);
             new QRCode(qrBox, {
                 text: khqrString,
                 width: 180,
                 height: 180
             });
+            document.getElementById("displayLockedAmount").innerText = `$${Number(amount).toFixed(2)}`;
+        }
 
+        function selectDepositAmount(amt, btnElement) {
+            selectedAmount = amt;
+            document.querySelectorAll(".amt-btn").forEach(b => b.classList.remove("active"));
+            if (btnElement) btnElement.classList.add("active");
+            renderQR(selectedAmount);
+        }
+
+        function openTopUpModal() {
             document.getElementById("topupModal").style.display = "flex";
+            renderQR(selectedAmount);
         }
 
         function closeTopUpModal() {
@@ -588,7 +632,7 @@
             renderMovies(filtered);
         }
 
-        // ចាប់ផ្តើមដំណើរការដំបូង
+        // Run
         updateBalanceDisplay();
         renderMovies(movies);
     </script>
