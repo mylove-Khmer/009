@@ -342,17 +342,18 @@
         </div>
     </div>
 
-    <!-- Modal Top Up (Native KHQR Generator) -->
+    <!-- Modal Top Up (Native KHQR Generator តាមស្តង់ដារ ABA) -->
     <div class="modal" id="topupModal">
         <div class="topup-card">
             <h3 style="color:#0b3b60; margin-bottom:5px;">💳 ដាក់ប្រាក់តាម Bakong KHQR</h3>
-            <p style="color:#666; font-size: 13px;">សូមស្កេន QR ខាងក្រោមដើម្បីផ្ទេរប្រាក់</p>
+            <p style="color:#666; font-size: 13px;">ស្កេនជាមួយ ABA, Bakong, Wing ដើម្បីផ្ទេរប្រាក់</p>
             
             <div class="qr-placeholder" id="qrContainer"></div>
             
             <div style="background:#f8f9fa; border:1px solid #e9ecef; border-radius:6px; padding:10px; margin:12px 0; font-size:13px; text-align:left;">
                 <p>👤 ឈ្មោះគណនី: <b>Smey Lov</b></p>
                 <p>🏦 Bakong ID: <b>samnang_mon@bkrt</b></p>
+                <p>💵 រូបិយប័ណ្ណ: <b>USD ($)</b></p>
             </div>
 
             <p style="font-size: 12px; color:#d9232d; margin-bottom: 15px;">
@@ -507,7 +508,7 @@
             document.getElementById("videoModal").style.display = "none";
         }
 
-        /* ── ក្បួនគណនា Bakong KHQR & CRC-16 Checksum ផ្លូវការ ── */
+        /* ── ក្បួនគណនា Bakong EMVCo KHQR & CRC16 តាមស្តង់ដារ ABA/NBC ── */
         function calculateCRC16(data) {
             let crc = 0xFFFF;
             for (let i = 0; i < data.length; i++) {
@@ -520,8 +521,7 @@
                     }
                 }
             }
-            let hex = crc.toString(16).toUpperCase();
-            return hex.padStart(4, '0');
+            return crc.toString(16).toUpperCase().padStart(4, '0');
         }
 
         function formatTag(tag, val) {
@@ -534,17 +534,18 @@
             const merchantName = "Smey Lov";
             const merchantCity = "Phnom Penh";
 
-            // Tag 29 (Solo Merchant / Individual Bakong Account)
-            const sub29 = formatTag("00", bankAccount);
+            // Tag 29: Bakong Account Info (បំពាក់ទាំង 00 និង 01 ត្រឹមត្រូវតាមស្ដង់ដារ)
+            const sub29 = formatTag("00", bankAccount) + formatTag("01", bankAccount);
             
             let payload = 
-                formatTag("00", "01") +             // Format Indicator
-                formatTag("01", "11") +             // 11 = Static QR (ភ្ញៀវវាយចំនួនលុយខ្លួនឯងពេល Scan)
-                formatTag("29", sub29) +            // Individual Merchant
+                formatTag("00", "01") +             // Payload Format Indicator
+                formatTag("01", "11") +             // 11 = Static QR (ភ្ញៀវវាយចំនួនទឹកប្រាក់ខ្លួនឯង)
+                formatTag("29", sub29) +            // Merchant Account Information
                 formatTag("52", "5999") +           // Merchant Category Code
-                formatTag("58", "KH") +             // Country
-                formatTag("59", merchantName) +     // Name
-                formatTag("60", merchantCity);      // City
+                formatTag("53", "840") +            // 840 = USD (ចាំបាច់សម្រាប់ ABA)
+                formatTag("58", "KH") +             // Country Code
+                formatTag("59", merchantName) +     // Merchant Name
+                formatTag("60", merchantCity);      // Merchant City
 
             payload += "6304";
             const crc = calculateCRC16(payload);
@@ -555,7 +556,6 @@
             const qrBox = document.getElementById("qrContainer");
             qrBox.innerHTML = "";
 
-            // បង្កើតកូដ QR ពិតប្រាកដតាមទិន្នន័យ Bakong
             const khqrString = generateBakongKHQR();
 
             new QRCode(qrBox, {
@@ -588,7 +588,7 @@
             renderMovies(filtered);
         }
 
-        // ចាប់ផ្តើមដំណើរការ
+        // ចាប់ផ្តើមដំណើរការដំបូង
         updateBalanceDisplay();
         renderMovies(movies);
     </script>
