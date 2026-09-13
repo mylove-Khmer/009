@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Angkor Media - វេបសាយទស្សនារឿងកម្សាន្ត</title>
+    <!-- QRCode JS Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -123,7 +125,7 @@
             border-color: #0b3b60;
         }
 
-        /* ── Product Grid ── */
+        /* ── Product/Movie Grid ── */
         .container {
             padding: 20px 5%;
         }
@@ -291,8 +293,8 @@
 
         .qr-placeholder {
             margin: 15px auto;
-            width: 200px;
-            height: 200px;
+            width: 190px;
+            height: 190px;
             padding: 5px;
             border: 1px solid #ddd;
             border-radius: 6px;
@@ -300,12 +302,6 @@
             align-items: center;
             justify-content: center;
             background: #fff;
-        }
-
-        .qr-placeholder img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
         }
     </style>
 </head>
@@ -346,15 +342,13 @@
         </div>
     </div>
 
-    <!-- Modal Top Up (បង្ហាញរូប QR ធនាគារផ្ទាល់) -->
+    <!-- Modal Top Up (Native KHQR Generator) -->
     <div class="modal" id="topupModal">
         <div class="topup-card">
             <h3 style="color:#0b3b60; margin-bottom:5px;">💳 ដាក់ប្រាក់តាម Bakong KHQR</h3>
             <p style="color:#666; font-size: 13px;">សូមស្កេន QR ខាងក្រោមដើម្បីផ្ទេរប្រាក់</p>
             
-            <div class="qr-placeholder" id="qrContainer">
-                <img src="my_qr.png" alt="Bakong QR Code">
-            </div>
+            <div class="qr-placeholder" id="qrContainer"></div>
             
             <div style="background:#f8f9fa; border:1px solid #e9ecef; border-radius:6px; padding:10px; margin:12px 0; font-size:13px; text-align:left;">
                 <p>👤 ឈ្មោះគណនី: <b>Smey Lov</b></p>
@@ -513,7 +507,63 @@
             document.getElementById("videoModal").style.display = "none";
         }
 
+        /* ── ក្បួនគណនា Bakong KHQR & CRC-16 Checksum ផ្លូវការ ── */
+        function calculateCRC16(data) {
+            let crc = 0xFFFF;
+            for (let i = 0; i < data.length; i++) {
+                crc ^= data.charCodeAt(i) << 8;
+                for (let j = 0; j < 8; j++) {
+                    if ((crc & 0x8000) !== 0) {
+                        crc = ((crc << 1) ^ 0x1021) & 0xFFFF;
+                    } else {
+                        crc = (crc << 1) & 0xFFFF;
+                    }
+                }
+            }
+            let hex = crc.toString(16).toUpperCase();
+            return hex.padStart(4, '0');
+        }
+
+        function formatTag(tag, val) {
+            const len = String(val.length).padStart(2, '0');
+            return tag + len + val;
+        }
+
+        function generateBakongKHQR() {
+            const bankAccount = "samnang_mon@bkrt";
+            const merchantName = "Smey Lov";
+            const merchantCity = "Phnom Penh";
+
+            // Tag 29 (Solo Merchant / Individual Bakong Account)
+            const sub29 = formatTag("00", bankAccount);
+            
+            let payload = 
+                formatTag("00", "01") +             // Format Indicator
+                formatTag("01", "11") +             // 11 = Static QR (ភ្ញៀវវាយចំនួនលុយខ្លួនឯងពេល Scan)
+                formatTag("29", sub29) +            // Individual Merchant
+                formatTag("52", "5999") +           // Merchant Category Code
+                formatTag("58", "KH") +             // Country
+                formatTag("59", merchantName) +     // Name
+                formatTag("60", merchantCity);      // City
+
+            payload += "6304";
+            const crc = calculateCRC16(payload);
+            return payload + crc;
+        }
+
         function openTopUpModal() {
+            const qrBox = document.getElementById("qrContainer");
+            qrBox.innerHTML = "";
+
+            // បង្កើតកូដ QR ពិតប្រាកដតាមទិន្នន័យ Bakong
+            const khqrString = generateBakongKHQR();
+
+            new QRCode(qrBox, {
+                text: khqrString,
+                width: 180,
+                height: 180
+            });
+
             document.getElementById("topupModal").style.display = "flex";
         }
 
@@ -538,6 +588,7 @@
             renderMovies(filtered);
         }
 
+        // ចាប់ផ្តើមដំណើរការ
         updateBalanceDisplay();
         renderMovies(movies);
     </script>
