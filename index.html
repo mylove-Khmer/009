@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>វេបសាយទស្សនារឿងកម្សាន្ត - Movie Hub</title>
+    <!-- QRCode Generator Script -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #111;
+            color: #fff;
+            padding-bottom: 50px;
+        }
+
+        header {
+            background-color: #000;
+            padding: 15px 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #222;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            color: #e50914;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .user-panel {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .wallet-badge {
+            background-color: #222;
+            border: 1px solid #444;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+
+        .wallet-badge span {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .btn-topup {
+            background-color: #28a745;
+            color: #fff;
+            border: none;
+            padding: 7px 14px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
+        .btn-topup:hover { background-color: #218838; }
+
+        .search-box input {
+            padding: 8px 15px;
+            border-radius: 20px;
+            border: 1px solid #444;
+            background-color: #222;
+            color: #fff;
+            outline: none;
+            width: 180px;
+            transition: 0.3s;
+        }
+
+        .search-box input:focus {
+            width: 240px;
+            border-color: #e50914;
+        }
+
+        .filter-bar {
+            padding: 20px 5%;
+            display: flex;
+            gap: 10px;
+        }
+
+        .filter-btn {
+            background-color: #222;
+            color: #aaa;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+
+        .filter-btn.active, .filter-btn:hover {
+            background-color: #e50914;
+            color: #fff;
+        }
+
+        .container {
+            padding: 0 5%;
+        }
+
+        .movie-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+            gap: 20px;
+        }
+
+        .movie-card {
+            background-color: #1a1a1a;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.2s;
+            border: 1px solid #282828;
+        }
+
+        .movie-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .poster-wrapper {
+            position: relative;
+            width: 100%;
+            height: 280px;
+        }
+
+        .poster-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .badge.free { background-color: #28a745; color: #fff; }
+        .badge.vip { background-color: #e50914; color: #fff; }
+
+        .movie-info {
+            padding: 12px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .movie-title {
+            font-size: 15px;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+
+        .play-btn {
+            background-color: #e50914;
+            color: #fff;
+            border: none;
+            padding: 9px 0;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: bold;
+        }
+
+        .play-btn:hover { background-color: #b80710; }
+
+        /* ── Modals (Player & Top Up) ── */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.95);
+            z-index: 200;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: #1a1a1a;
+            width: 90%;
+            max-width: 800px;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid #333;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 26px;
+            color: #aaa;
+            cursor: pointer;
+            z-index: 10;
+        }
+
+        .close-btn:hover { color: #fff; }
+
+        .video-box {
+            width: 100%;
+            height: 460px;
+            background-color: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .video-box video {
+            width: 100%;
+            height: 100%;
+            outline: none;
+        }
+
+        /* ── Lock / Pay Screen ── */
+        .lock-container {
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .lock-icon { font-size: 50px; margin-bottom: 15px; }
+        .lock-title { font-size: 20px; margin-bottom: 10px; }
+        .lock-price { color: #e50914; font-size: 22px; font-weight: bold; margin-bottom: 15px; }
+
+        .action-btns {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn-confirm {
+            background-color: #e50914;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* ── Top Up Dialog ── */
+        .topup-card {
+            background-color: #1a1a1a;
+            width: 90%;
+            max-width: 400px;
+            border-radius: 8px;
+            padding: 25px;
+            text-align: center;
+            position: relative;
+            border: 1px solid #333;
+        }
+
+        .qr-placeholder {
+            margin: 20px auto;
+            width: 200px;
+            height: 200px;
+            background: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">🎬 MovieKhmer</div>
+        <div class="user-panel">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="ស្វែងរករឿង..." onkeyup="filterMovies()">
+            </div>
+            <div class="wallet-badge">កាបូប: <span id="userBalanceDisplay">$0.00</span></div>
+            <button class="btn-topup" onclick="openTopUpModal()">💳 ដាក់លុយ</button>
+        </div>
+    </header>
+
+    <div class="filter-bar">
+        <button class="filter-btn active" onclick="setCategory('all')">ទាំងអស់</button>
+        <button class="filter-btn" onclick="setCategory('free')">🎁 រឿង Free</button>
+        <button class="filter-btn" onclick="setCategory('vip')">🔒 រឿង VIP</button>
+    </div>
+
+    <div class="container">
+        <div class="movie-grid" id="movieContainer"></div>
+    </div>
+
+    <!-- Video / Payment Modal -->
+    <div class="modal" id="videoModal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closePlayer()">&times;</span>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <!-- Top Up Modal -->
+    <div class="modal" id="topupModal">
+        <div class="topup-card">
+            <span class="close-btn" onclick="closeTopUpModal()">&times;</span>
+            <h3>💳 ដាក់ប្រាក់ចូលកាបូប</h3>
+            <p style="color:#aaa; font-size: 13px; margin-top:5px;">Scan KHQR ដើម្បីបញ្ចូលសមតុល្យ</p>
+            <div class="qr-placeholder" id="qrContainer"></div>
+            <p style="font-size: 14px; margin-bottom: 5px;">គណនី៖ <b>Smey Lov (Bakong)</b></p>
+            <p style="font-size: 14px; margin-bottom: 15px;">ចំនួនទឹកប្រាក់សាកល្បង៖ <b>$5.00</b></p>
+            <button class="btn-confirm" style="background:#28a745; width:100%;" onclick="mockDeposit(5.00)">✅ ខ្ញុំបានផ្ទេររួចរាល់ (ដាក់ $5.00)</button>
+        </div>
+    </div>
+
+    <script>
+        // អានសមតុល្យទឹកប្រាក់ពី LocalStorage (បើគ្មានគឺចាប់ផ្តើមពី $0.00)
+        let userBalance = parseFloat(localStorage.getItem("user_balance")) || 0.00;
+
+        // បញ្ជីរឿង
+        const movies = [
+            {
+                id: "m1",
+                title: "រឿង កូនស្រីមហាសេដ្ឋីបន្លំខ្លួន",
+                category: "free",
+                price: 0.00,
+                poster: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400",
+                videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+            },
+            {
+                id: "m2",
+                title: "រឿង វីរបុរសកម្ចាត់ក្រុមបិសាច (VIP)",
+                category: "vip",
+                price: 0.50,
+                poster: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400",
+                videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4"
+            },
+            {
+                id: "m3",
+                title: "រឿង កំប្លែងខ្លីៗ ជួបស្នេហ៍ពិត",
+                category: "free",
+                price: 0.00,
+                poster: "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=400",
+                videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
+            },
+            {
+                id: "m4",
+                title: "រឿង សង្គ្រាមចក្រវាលសងសឹក (VIP)",
+                category: "vip",
+                price: 1.00,
+                poster: "https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0?w=400",
+                videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4"
+            }
+        ];
+
+        let currentFilter = 'all';
+
+        function updateBalanceDisplay() {
+            document.getElementById("userBalanceDisplay").innerText = `$${userBalance.toFixed(2)}`;
+            localStorage.setItem("user_balance", userBalance.toFixed(2));
+        }
+
+        function renderMovies(data) {
+            const container = document.getElementById("movieContainer");
+            container.innerHTML = "";
+
+            if (data.length === 0) {
+                container.innerHTML = "<p>រកមិនឃើញរឿងដែលអ្នកចង់ស្វែងរកទេ!</p>";
+                return;
+            }
+
+            data.forEach(m => {
+                const card = document.createElement("div");
+                card.className = "movie-card";
+                const isFree = (m.category === "free");
+                const priceTag = isFree ? "Free" : `$${m.price.toFixed(2)}`;
+                const badgeClass = isFree ? "free" : "vip";
+
+                card.innerHTML = `
+                    <div class="poster-wrapper">
+                        <img src="${m.poster}" alt="${m.title}">
+                        <span class="badge ${badgeClass}">${priceTag}</span>
+                    </div>
+                    <div class="movie-info">
+                        <div class="movie-title">${m.title}</div>
+                        <button class="play-btn" onclick="handleMovieClick('${m.id}')">
+                            ${isFree ? '▶️ ទស្សនា' : '🔒 ទស្សនា (' + priceTag + ')'}
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function handleMovieClick(movieId) {
+            const movie = movies.find(x => x.id === movieId);
+            if (!movie) return;
+
+            const modalBody = document.getElementById("modalBody");
+
+            // ១. បើជារឿង Free -> បើកមើលភ្លាម
+            if (movie.category === "free") {
+                playVideo(movie.title, movie.videoUrl);
+                return;
+            }
+
+            // ២. បើជារឿង VIP
+            if (userBalance < movie.price) {
+                modalBody.innerHTML = `
+                    <div class="lock-container">
+                        <div class="lock-icon">🔒</div>
+                        <div class="lock-title">រឿងនេះសម្រាប់តែសមាជិក VIP!</div>
+                        <p style="color:#aaa; margin-bottom:10px;">${movie.title}</p>
+                        <div class="lock-price">តម្លៃ៖ $${movie.price.toFixed(2)}</div>
+                        <p style="color:#e50914; font-size:14px;">⚠️ កាបូបរបស់អ្នកមានត្រឹមតែ $${userBalance.toFixed(2)} (មិនគ្រប់គ្រាន់ទេ)</p>
+                        <div class="action-btns">
+                            <button class="btn-confirm" style="background:#28a745;" onclick="closePlayer(); openTopUpModal();">💳 ដាក់ប្រាក់ឥឡូវនេះ</button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                modalBody.innerHTML = `
+                    <div class="lock-container">
+                        <div class="lock-icon">🎟️</div>
+                        <div class="lock-title">បញ្ជាក់ការទូទាត់ទស្សនា</div>
+                        <p style="color:#aaa; margin-bottom:10px;">${movie.title}</p>
+                        <div class="lock-price">តម្លៃ៖ $${movie.price.toFixed(2)}</div>
+                        <p style="color:#28a745; font-size:14px;">កាបូបបច្ចុប្បន្ន៖ $${userBalance.toFixed(2)}</p>
+                        <div class="action-btns">
+                            <button class="btn-confirm" onclick="confirmPayment('${movie.id}')">🔓 កាត់ $${movie.price.toFixed(2)} ដើម្បីទស្សនា</button>
+                        </div>
+                    </div>
+                `;
+            }
+            document.getElementById("videoModal").style.display = "flex";
+        }
+
+        function confirmPayment(movieId) {
+            const movie = movies.find(x => x.id === movieId);
+            if (!movie || userBalance < movie.price) return;
+
+            userBalance -= movie.price;
+            updateBalanceDisplay();
+            playVideo(movie.title, movie.videoUrl);
+        }
+
+        function playVideo(title, url) {
+            const modalBody = document.getElementById("modalBody");
+            modalBody.innerHTML = `
+                <div class="video-box">
+                    <video controls autoplay>
+                        <source src="${url}" type="video/mp4">
+                    </video>
+                </div>
+                <div style="padding: 15px;">
+                    <h3>${title}</h3>
+                </div>
+            `;
+            document.getElementById("videoModal").style.display = "flex";
+        }
+
+        function closePlayer() {
+            const video = document.querySelector("#modalBody video");
+            if (video) video.pause();
+            document.getElementById("modalBody").innerHTML = "";
+            document.getElementById("videoModal").style.display = "none";
+        }
+
+        /* ── Top Up Functions (Bakong KHQR) ── */
+        function openTopUpModal() {
+            const qrBox = document.getElementById("qrContainer");
+            qrBox.innerHTML = "";
+            
+            // ទិន្នន័យ KHQR ផ្ទាល់ខ្លួនរបស់ Smey Lov
+            const myKHQR = "00020101021129370016samnang_mon@bkrt0116samnang_mon@bkrt5204599953038405802KH5908Smey Lov6010Phnom Penh6304ABCD";
+
+            new QRCode(qrBox, {
+                text: myKHQR,
+                width: 180,
+                height: 180
+            });
+            document.getElementById("topupModal").style.display = "flex";
+        }
+
+        function closeTopUpModal() {
+            document.getElementById("topupModal").style.display = "none";
+        }
+
+        function mockDeposit(amount) {
+            userBalance += amount;
+            updateBalanceDisplay();
+            alert(`✅ ដាក់លុយបានជោគជ័យ! បន្ថែម +$${amount.toFixed(2)} ទៅក្នុងកាបូប។`);
+            closeTopUpModal();
+        }
+
+        /* ── Search & Filter ── */
+        function setCategory(cat) {
+            currentFilter = cat;
+            document.querySelectorAll(".filter-btn").forEach(btn => btn.classList.remove("active"));
+            event.target.classList.add("active");
+            filterMovies();
+        }
+
+        function filterMovies() {
+            const searchTxt = document.getElementById("searchInput").value.toLowerCase();
+            const filtered = movies.filter(m => {
+                const matchCat = (currentFilter === 'all') || (m.category === currentFilter);
+                const matchSearch = m.title.toLowerCase().includes(searchTxt);
+                return matchCat && matchSearch;
+            });
+            renderMovies(filtered);
+        }
+
+        // Init
+        updateBalanceDisplay();
+        renderMovies(movies);
+    </script>
+</body>
+</html>
