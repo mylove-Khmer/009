@@ -29,27 +29,25 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
-    // --- ក្បួនបង្កើត Dynamic KHQR តាមកូដដើមរបស់ MON SAMNANG ---
     function crc16CCITT(str) {
       let crc = 0xFFFF;
       for (let c = 0; c < str.length; c++) {
         crc ^= str.charCodeAt(c) << 8;
         for (let i = 0; i < 8; i++) {
           if (crc & 0x8000) {
-            crc = ((crc << 1) ^ 0x1021) & 0xFFFF;
+            crc = (crc << 1) ^ 0x1021;
           } else {
-            crc = (crc << 1) & 0xFFFF;
+            crc = crc << 1;
           }
         }
       }
       return (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
     }
 
-    // អនុគមន៍ភ្ជាប់ចំនួនទឹកប្រាក់ដែលបានជ្រើសរើសចូលទៅក្នុងកូដ KHQR ដើម
     function buildDynamicKHQR(amount) {
       const formattedAmount = parseFloat(amount).toFixed(2);
       const amtLength = formattedAmount.length < 10 ? '0' + formattedAmount.length : String(formattedAmount.length);
-      const tag54 = `54${amtLength}${formattedAmount}`; // Tag ចំនួនទឹកប្រាក់
+      const tag54 = `54${amtLength}${formattedAmount}`;
 
       const part1 = "00020101021230510016abaakhppxxx@abaa01151260903142910660208ABA Bank520465135303840";
       const part2 = "5802KH5911MON SAMNANG6012KAMPONG THOM624268380010PAYWAY@ABA0107195096202090324860766304";
@@ -94,22 +92,6 @@
         if (window.lucide) window.lucide.createIcons();
       }, [currentTab, showTopUp]);
 
-      const handleAddFund = (amount, billNo) => {
-        const numAmount = parseFloat(amount);
-        setWallet(prev => ({
-          balance: parseFloat((prev.balance + numAmount).toFixed(2)),
-          transactions: [
-            {
-              id: billNo,
-              date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-              type: 'income',
-              amount: numAmount
-            },
-            ...prev.transactions
-          ]
-        }));
-      };
-
       return (
         <div className="max-w-md mx-auto min-h-screen bg-[#0d0d0d] flex flex-col justify-between relative shadow-2xl pb-20 border-x border-neutral-900">
           <header className="flex items-center justify-between px-4 py-3 sticky top-0 bg-[#0d0d0d]/95 backdrop-blur border-b border-neutral-900 z-40">
@@ -149,15 +131,7 @@
             ))}
           </nav>
 
-          {showTopUp && (
-            <TopUpModal 
-              onClose={() => setShowTopUp(false)} 
-              onSuccess={(amt, bill) => { 
-                handleAddFund(amt, bill);
-                setShowTopUp(false);
-              }}
-            />
-          )}
+          {showTopUp && <TopUpModal onClose={() => setShowTopUp(false)} />}
         </div>
       );
     }
@@ -260,21 +234,15 @@
       );
     }
 
-    // Modal Top Up (កំណត់ឱ្យភ្ញៀវចុចរើសតែប៉ុណ្ណោះ មិនអាចវាយបញ្ចូលលុយបានទេ)
-    function TopUpModal({ onClose, onSuccess }) {
-      // កំណត់កញ្ចប់ទឹកប្រាក់ជាក់លាក់
+    // Modal KHQR (បានដកប៊ូតុងទាំងពីរបាតក្រោមចេញរួចរាល់)
+    function TopUpModal({ onClose }) {
       const presetAmounts = ['1.60', '1.99', '5.00', '6.99', '10.00', '20.00'];
       const [selectedAmount, setSelectedAmount] = useState('1.99');
       const [isPaying, setIsPaying] = useState(false);
-      const [billNo, setBillNo] = useState('');
       const [khqrString, setKhqrString] = useState('');
       const qrRef = useRef(null);
 
       const handleProceed = () => {
-        const currentBill = 'ADC-' + Math.floor(100000 + Math.random() * 900000);
-        setBillNo(currentBill);
-
-        // បង្កើតកូដ Dynamic KHQR តាមកញ្ចប់ដែលភ្ញៀវបានចុចរើស
         const dynamicQR = buildDynamicKHQR(selectedAmount);
         setKhqrString(dynamicQR);
         setIsPaying(true);
@@ -301,7 +269,6 @@
                 <h3 className="text-base font-bold mb-1">Top up wallet</h3>
                 <p className="text-neutral-400 text-xs mb-5">Select an amount to top up your wallet.</p>
                 
-                {/* បញ្ជីកញ្ចប់ទឹកប្រាក់ដែលកំណត់ស្រាប់សម្រាប់ជ្រើសរើស */}
                 <div className="grid grid-cols-3 gap-2.5 mb-6">
                   {presetAmounts.map(val => (
                     <button
@@ -335,7 +302,7 @@
                   <h2 className="text-xl font-black tracking-wider uppercase">KHQR</h2>
                 </div>
 
-                {/* ព័ត៌មានក្រុមហ៊ុន និងចំនួនទឹកប្រាក់ដែលភ្ញៀវរើស */}
+                {/* ព័ត៌មានឈ្មោះ និងចំនួនទឹកប្រាក់ */}
                 <div className="pt-4 pb-2 px-6 text-center">
                   <p className="text-xs font-medium text-gray-500">MON SAMNANG</p>
                   <div className="flex items-baseline justify-center gap-1 mt-1">
@@ -344,7 +311,7 @@
                   </div>
                 </div>
 
-                {/* បន្ទាត់សំបុត្រ (Dashed Ticket Line) */}
+                {/* បន្ទាត់សំបុត្រ (Dashed Line) */}
                 <div className="relative my-2 border-b-2 border-dashed border-gray-200">
                   <div className="w-4 h-4 bg-[#0d0d0d] rounded-full absolute -left-2 -top-2"></div>
                   <div className="w-4 h-4 bg-[#0d0d0d] rounded-full absolute -right-2 -top-2"></div>
@@ -389,25 +356,11 @@
                   </p>
                 </div>
 
-                {/* ប៊ូតុងទូទាត់ */}
-                <div className="px-6 pb-5 space-y-2">
-                  <a 
-                    href={`bakong://qr?qr=${encodeURIComponent(khqrString)}`}
-                    className="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow transition"
-                  >
-                    <span>បើកទូទាត់ក្នុង Bakong App</span>
-                  </a>
-
-                  <button 
-                    onClick={() => onSuccess(selectedAmount, billNo)}
-                    className="w-full bg-amber-400 hover:bg-amber-500 text-black py-2.5 rounded-xl text-xs font-bold transition"
-                  >
-                    ខ្ញុំបានបាញ់លុយរួចរាល់
-                  </button>
-                  
+                {/* ខាងក្រោមទុកតែប៊ូតុងបិទផ្ទាំង (Cancel/Close) ប៉ុណ្ណោះ */}
+                <div className="px-6 pb-5 pt-2">
                   <button 
                     onClick={onClose} 
-                    className="text-gray-400 text-xs text-center w-full block hover:text-gray-600 pt-1"
+                    className="w-full py-2.5 rounded-xl border border-neutral-300 text-gray-600 text-xs font-semibold hover:bg-gray-50 transition"
                   >
                     បិទផ្ទាំង
                   </button>
