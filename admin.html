@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - Angkor DC</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-[#0f0f0f] text-white font-sans">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    function AdminApp() {
+      const [isLoggedIn, setIsLoggedIn] = useState(false);
+      const [password, setPassword] = useState('');
+      const [activeTab, setActiveTab] = useState('deposit');
+
+      // គ្រប់គ្រងទិន្នន័យ
+      const [movies, setMovies] = useState(() => {
+        const saved = localStorage.getItem('app_movies');
+        return saved ? JSON.parse(saved) : [];
+      });
+
+      const [wallet, setWallet] = useState(() => {
+        const saved = localStorage.getItem('user_wallet');
+        return saved ? JSON.parse(saved) : { balance: 0.00, transactions: [] };
+      });
+
+      // Form States
+      const [depositAmt, setDepositAmt] = useState('');
+      const [title, setTitle] = useState('');
+      const [img, setImg] = useState('');
+      const [category, setCategory] = useState('New Release');
+      const [originalPrice, setOriginalPrice] = useState('');
+      const [price, setPrice] = useState('');
+
+      useEffect(() => {
+        if (window.lucide) window.lucide.createIcons();
+      }, [isLoggedIn, activeTab, movies]);
+
+      // Login Admin (លេខកូដសម្ងាត់គឺ: 1234)
+      const handleLogin = (e) => {
+        e.preventDefault();
+        if (password === '1234') {
+          setIsLoggedIn(true);
+        } else {
+          alert('លេខកូដសម្ងាត់ Admin មិនត្រឹមត្រូវទេ!');
+        }
+      };
+
+      // មុខងារដាក់លុយឱ្យភ្ញៀវ
+      const handleDeposit = (e) => {
+        e.preventDefault();
+        if (!depositAmt || parseFloat(depositAmt) <= 0) return alert('សូមបញ្ចូលចំនួនទឹកប្រាក់');
+        const num = parseFloat(depositAmt);
+        const updatedWallet = {
+          balance: parseFloat((wallet.balance + num).toFixed(2)),
+          transactions: [
+            {
+              id: 'ADMIN-DEP-' + Math.floor(100000 + Math.random() * 900000),
+              date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+              type: 'income',
+              amount: num
+            },
+            ...wallet.transactions
+          ]
+        };
+        setWallet(updatedWallet);
+        localStorage.setItem('user_wallet', JSON.stringify(updatedWallet));
+        alert(`បានបញ្ចូលទឹកប្រាក់ $${num.toFixed(2)} ទៅកាន់ Wallet ភ្ញៀវដោយជោគជ័យ!`);
+        setDepositAmt('');
+      };
+
+      // មុខងារបញ្ចូលរឿងថ្មី & កំណត់តម្លៃ
+      const handleAddMovie = (e) => {
+        e.preventDefault();
+        if (!title || !img || !price) return alert('សូមបំពេញព័ត៌មានឱ្យបានគ្រប់គ្រាន់');
+        const newMovie = {
+          id: Date.now(),
+          title,
+          img,
+          category,
+          originalPrice: originalPrice ? parseFloat(originalPrice) : null,
+          price: parseFloat(price),
+          views: 0
+        };
+        const updatedMovies = [newMovie, ...movies];
+        setMovies(updatedMovies);
+        localStorage.setItem('app_movies', JSON.stringify(updatedMovies));
+        alert('បានបញ្ចូលភាពយន្តថ្មីដោយជោគជ័យ!');
+        setTitle('');
+        setImg('');
+        setOriginalPrice('');
+        setPrice('');
+      };
+
+      // មុខងារលុបរឿង
+      const handleDeleteMovie = (id) => {
+        if (confirm('តើអ្នកពិតជាចង់លុបរឿងនេះមែនទេ?')) {
+          const updated = movies.filter(m => m.id !== id);
+          setMovies(updated);
+          localStorage.setItem('app_movies', JSON.stringify(updated));
+        }
+      };
+
+      if (!isLoggedIn) {
+        return (
+          <div className="min-h-screen flex items-center justify-center p-4">
+            <form onSubmit={handleLogin} className="bg-[#1a1a1a] border border-neutral-800 p-6 rounded-2xl w-full max-w-sm text-center shadow-2xl">
+              <div className="w-12 h-12 bg-amber-500 rounded-full flex items-center justify-center mx-auto mb-3 text-black font-black text-xl">A</div>
+              <h2 className="text-lg font-bold text-white mb-1">ផ្ទាំងគ្រប់គ្រង Admin</h2>
+              <p className="text-xs text-neutral-400 mb-5">សូមវាយបញ្ចូលលេខកូដសម្ងាត់ដើម្បីចូលដំណើរការ</p>
+              
+              <input
+                type="password"
+                placeholder="លេខកូដសម្ងាត់ (1234)"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                className="w-full bg-[#111] border border-neutral-700 rounded-xl px-4 py-2.5 text-sm text-center tracking-widest text-white mb-4 focus:outline-none focus:border-amber-400"
+              />
+              <button type="submit" className="w-full bg-amber-400 hover:bg-amber-500 text-black font-bold py-2.5 rounded-xl text-xs transition">
+                ចូលប្រព័ន្ធ (Login)
+              </button>
+            </form>
+          </div>
+        );
+      }
+
+      return (
+        <div className="max-w-2xl mx-auto min-h-screen p-4 pb-12">
+          {/* Admin Header */}
+          <div className="flex items-center justify-between bg-[#1a1a1a] border border-neutral-800 p-4 rounded-2xl mb-6 shadow-md">
+            <div>
+              <h1 className="text-lg font-bold text-white flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span> Angkor DC Admin Portal
+              </h1>
+              <p className="text-xs text-neutral-400">គ្រប់គ្រងសមតុល្យភ្ញៀវ និងបញ្ជីភាពយន្ត</p>
+            </div>
+            <a href="index.html" target="_blank" className="bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs px-3 py-1.5 rounded-lg border border-neutral-700">
+              មើលវេបសាយភ្ញៀវ ↗
+            </a>
+          </div>
+
+          {/* Navigation Tabs */}
+          <div className="flex gap-2 mb-6 bg-[#161616] p-1.5 rounded-xl border border-neutral-800">
+            <button
+              onClick={() => setActiveTab('deposit')}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${activeTab === 'deposit' ? 'bg-amber-400 text-black shadow' : 'text-neutral-400 hover:text-white'}`}
+            >
+              ដាក់លុយឱ្យភ្ញៀវ
+            </button>
+            <button
+              onClick={() => setActiveTab('add_movie')}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${activeTab === 'add_movie' ? 'bg-amber-400 text-black shadow' : 'text-neutral-400 hover:text-white'}`}
+            >
+              បញ្ចូលរឿង & តម្លៃ
+            </button>
+            <button
+              onClick={() => setActiveTab('views')}
+              className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${activeTab === 'views' ? 'bg-amber-400 text-black shadow' : 'text-neutral-400 hover:text-white'}`}
+            >
+              មើលស្ថិតិអ្នកទស្សនា
+            </button>
+          </div>
+
+          {/* ផ្នែកទី ១៖ ដាក់លុយឱ្យភ្ញៀវ */}
+          {activeTab === 'deposit' && (
+            <div className="bg-[#1a1a1a] border border-neutral-800 p-5 rounded-2xl space-y-4">
+              <h3 className="text-sm font-bold text-white">បញ្ចូលទឹកប្រាក់ទៅ Wallet ភ្ញៀវ</h3>
+              
+              <div className="bg-[#111] p-4 rounded-xl border border-neutral-800 flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-neutral-400">សមតុល្យលុយភ្ញៀវបច្ចុប្បន្ន (Balance)</p>
+                  <p className="text-2xl font-black text-amber-400 mt-0.5">${parseFloat(wallet.balance || 0).toFixed(2)} USD</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-[11px] text-neutral-500">សរុប {wallet.transactions.length} ប្រតិបត្តិការ</span>
+                </div>
+              </div>
+
+              <form onSubmit={handleDeposit} className="space-y-3">
+                <div>
+                  <label className="text-xs text-neutral-400 block mb-1">ចំនួនទឹកប្រាក់ត្រូវបញ្ចូល ($ USD)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="ឧទាហរណ៍៖ 5.00"
+                    value={depositAmt}
+                    onChange={e => setDepositAmt(e.target.value)}
+                    className="w-full bg-[#111] border border-neutral-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+                <button type="submit" className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-xl text-xs transition">
+                  + បញ្ចូលទឹកប្រាក់ភ្លាមៗ
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* ផ្នែកទី ២៖ បញ្ចូលរឿង និងកំណត់តម្លៃ/បញ្ចុះតម្លៃ */}
+          {activeTab === 'add_movie' && (
+            <div className="bg-[#1a1a1a] border border-neutral-800 p-5 rounded-2xl space-y-4">
+              <h3 className="text-sm font-bold text-white">បញ្ចូលភាពយន្តថ្មី និងកំណត់តម្លៃ</h3>
+              
+              <form onSubmit={handleAddMovie} className="space-y-3">
+                <div>
+                  <label className="text-xs text-neutral-400 block mb-1">ចំណងជើងរឿង (Movie Title)</label>
+                  <input
+                    type="text"
+                    placeholder="ឧ. ភូមិអរូបិយ"
+                    value={title}
+                    onChange={e => setTitle(e.target.value)}
+                    className="w-full bg-[#111] border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs text-neutral-400 block mb-1">តំណភ្ជាប់រូបភាព Poster (Image URL)</label>
+                  <input
+                    type="text"
+                    placeholder="https://.../poster.jpg"
+                    value={img}
+                    onChange={e => setImg(e.target.value)}
+                    className="w-full bg-[#111] border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-neutral-400 block mb-1">តម្លៃដើម ($ USD)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="ឧ. 2.50"
+                      value={originalPrice}
+                      onChange={e => setOriginalPrice(e.target.value)}
+                      className="w-full bg-[#111] border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-neutral-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-amber-400 font-bold block mb-1">តម្លៃបញ្ចុះ/លក់ ($ USD)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="ឧ. 1.60"
+                      value={price}
+                      onChange={e => setPrice(e.target.value)}
+                      className="w-full bg-[#111] border border-amber-500 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <button type="submit" className="w-full bg-amber-400 hover:bg-amber-500 text-black font-bold py-2.5 rounded-xl text-xs transition">
+                  + បង្ហោះរឿងទៅលើវេបសាយភ្ញៀវ
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* ផ្នែកទី ៣៖ មើលអ្នកចូលទស្សនា & គ្រប់គ្រងរឿង */}
+          {activeTab === 'views' && (
+            <div className="bg-[#1a1a1a] border border-neutral-800 p-5 rounded-2xl space-y-3">
+              <h3 className="text-sm font-bold text-white mb-2">ស្ថិតិអ្នកចូលទស្សនារឿង</h3>
+              
+              <div className="space-y-2">
+                {movies.map(m => (
+                  <div key={m.id} className="flex items-center justify-between p-3 rounded-xl bg-[#111] border border-neutral-800">
+                    <div className="flex items-center gap-3">
+                      <img src={m.img} className="w-10 h-14 object-cover rounded-lg border border-neutral-700" />
+                      <div>
+                        <p className="text-xs font-bold text-white">{m.title}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-amber-400 text-xs font-bold">${m.price}</span>
+                          {m.originalPrice && <span className="text-neutral-500 line-through text-[10px]">${m.originalPrice}</span>}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                      <span className="bg-neutral-800 text-neutral-200 text-xs font-bold px-2.5 py-1 rounded-lg border border-neutral-700">
+                        👁️ {m.views} នាក់
+                      </span>
+                      <button onClick={() => handleDeleteMovie(m.id)} className="text-red-400 hover:text-red-300 text-xs">
+                        លុប
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+        </div>
+      );
+    }
+
+    ReactDOM.render(<AdminApp />, document.getElementById('root'));
+  </script>
+</body>
+</html>
