@@ -35,7 +35,7 @@
         crc ^= str.charCodeAt(c) << 8;
         for (let i = 0; i < 8; i++) {
           if (crc & 0x8000) {
-            crc = (crc << 1) ^ 0x1021;
+            crc = ((crc << 1) ^ 0x1021) & 0xFFFF;
           } else {
             crc = crc << 1;
           }
@@ -234,16 +234,24 @@
       );
     }
 
-    // Modal KHQR (បានដកប៊ូតុងទាំងពីរបាតក្រោមចេញរួចរាល់)
+    // Modal Top Up (មានទាំងប៊ូតុងកញ្ចប់លុយ និងប្រអប់វាយបញ្ចូលលុយ)
     function TopUpModal({ onClose }) {
       const presetAmounts = ['1.60', '1.99', '5.00', '6.99', '10.00', '20.00'];
       const [selectedAmount, setSelectedAmount] = useState('1.99');
+      const [customAmount, setCustomAmount] = useState('');
       const [isPaying, setIsPaying] = useState(false);
       const [khqrString, setKhqrString] = useState('');
       const qrRef = useRef(null);
 
+      // បើភ្ញៀវវាយបញ្ចូលលុយ យកតាមតម្លៃវាយបញ្ចូល បើអត់ទេយកតាមប៊ូតុងរើស
+      const activeAmount = customAmount ? customAmount : selectedAmount;
+
       const handleProceed = () => {
-        const dynamicQR = buildDynamicKHQR(selectedAmount);
+        if (!activeAmount || parseFloat(activeAmount) <= 0) {
+          alert('សូមជ្រើសរើស ឬវាយបញ្ចូលចំនួនទឹកប្រាក់ឱ្យបានត្រឹមត្រូវ');
+          return;
+        }
+        const dynamicQR = buildDynamicKHQR(activeAmount);
         setKhqrString(dynamicQR);
         setIsPaying(true);
       };
@@ -267,32 +275,53 @@
             {!isPaying ? (
               <div className="p-6 bg-neutral-900 text-white rounded-t-3xl sm:rounded-3xl">
                 <h3 className="text-base font-bold mb-1">Top up wallet</h3>
-                <p className="text-neutral-400 text-xs mb-5">Select an amount to top up your wallet.</p>
+                <p className="text-neutral-400 text-xs mb-4">Select an amount to top up your wallet.</p>
                 
-                <div className="grid grid-cols-3 gap-2.5 mb-6">
+                {/* ប៊ូតុងជ្រើសរើសកញ្ចប់លុយរហ័ស */}
+                <div className="grid grid-cols-3 gap-2 mb-3">
                   {presetAmounts.map(val => (
                     <button
                       key={val}
-                      onClick={() => setSelectedAmount(val)}
-                      className={`py-3 rounded-xl border text-sm font-bold transition flex flex-col items-center justify-center ${
-                        selectedAmount === val 
+                      onClick={() => { setSelectedAmount(val); setCustomAmount(''); }}
+                      className={`py-2.5 rounded-xl border text-xs font-bold transition flex flex-col items-center justify-center ${
+                        selectedAmount === val && !customAmount
                           ? 'border-amber-400 bg-amber-400/15 text-amber-400 shadow-md scale-105' 
                           : 'border-neutral-800 bg-[#161616] text-neutral-300 hover:border-neutral-700'
                       }`}
                     >
-                      ${val}
-                      <span className="text-[10px] font-normal text-neutral-400">USD</span>
+                      <span>${val}</span>
+                      <span className="text-[9px] font-normal text-neutral-400">USD</span>
                     </button>
                   ))}
+                </div>
+
+                {/* ប្រអប់វាយសរសេរចំនួនលុយដោយផ្ទាល់ */}
+                <div className="mb-5">
+                  <label className="text-[11px] text-neutral-400 block mb-1.5 font-medium">ឬវាយបញ្ចូលចំនួនទឹកប្រាក់ ($ USD)</label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-sm">$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0.10"
+                      placeholder="0.00"
+                      value={customAmount}
+                      onChange={(e) => {
+                        setCustomAmount(e.target.value);
+                        setSelectedAmount('');
+                      }}
+                      className="w-full bg-[#161616] border border-neutral-700 rounded-xl pl-8 pr-4 py-2.5 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-amber-400 transition"
+                    />
+                  </div>
                 </div>
 
                 <button
                   onClick={handleProceed}
                   className="w-full bg-amber-400 hover:bg-amber-500 text-black font-bold py-3 rounded-xl text-xs transition shadow-lg"
                 >
-                  បន្តទៅការទូទាត់ ${selectedAmount}
+                  បន្តទៅការទូទាត់ ${parseFloat(activeAmount || 0).toFixed(2)}
                 </button>
-                <button onClick={onClose} className="text-neutral-500 text-xs mt-3 block w-full text-center">បោះបង់</button>
+                <button onClick={onClose} className="text-neutral-500 text-xs mt-3 block w-full text-center hover:text-neutral-300">បោះបង់</button>
               </div>
             ) : (
               <div>
@@ -306,7 +335,7 @@
                 <div className="pt-4 pb-2 px-6 text-center">
                   <p className="text-xs font-medium text-gray-500">MON SAMNANG</p>
                   <div className="flex items-baseline justify-center gap-1 mt-1">
-                    <span className="text-3xl font-black text-gray-900">{parseFloat(selectedAmount).toFixed(2)}</span>
+                    <span className="text-3xl font-black text-gray-900">{parseFloat(activeAmount).toFixed(2)}</span>
                     <span className="text-xs font-bold text-gray-500">USD</span>
                   </div>
                 </div>
@@ -341,7 +370,7 @@
                       const canvas = qrRef.current.querySelector('canvas');
                       if (canvas) {
                         const link = document.createElement('a');
-                        link.download = `KHQR-${selectedAmount}USD.png`;
+                        link.download = `KHQR-${activeAmount}USD.png`;
                         link.href = canvas.toDataURL();
                         link.click();
                       }
@@ -356,7 +385,7 @@
                   </p>
                 </div>
 
-                {/* ខាងក្រោមទុកតែប៊ូតុងបិទផ្ទាំង (Cancel/Close) ប៉ុណ្ណោះ */}
+                {/* ប៊ូតុងបិទផ្ទាំង */}
                 <div className="px-6 pb-5 pt-2">
                   <button 
                     onClick={onClose} 
