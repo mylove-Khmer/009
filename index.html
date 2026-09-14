@@ -6,14 +6,15 @@
   <title>Angkor DC Web</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- React & Babel -->
-  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <!-- React & ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- Babel -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- QR Code Generator -->
-  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <!-- QRCode.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -25,7 +26,55 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
-    // ទិន្នន័យភាពយន្តគំរូ
+    // Helper Function សម្រាប់បង្កើត EMVCo KHQR String ដោយផ្ទាល់ក្នុង Browser
+    function formatEMVTag(tag, value) {
+      const len = value.length < 10 ? '0' + value.length : '' + value.length;
+      return tag + len + value;
+    }
+
+    function crc16(data) {
+      let crc = 0xFFFF;
+      for (let i = 0; i < data.length; i++) {
+        crc ^= (data.charCodeAt(i) << 8);
+        for (let j = 0; j < 8; j++) {
+          if ((crc & 0x8000) !== 0) {
+            crc = ((crc << 1) ^ 0x1021) & 0xFFFF;
+          } else {
+            crc = (crc << 1) & 0xFFFF;
+          }
+        }
+      }
+      let hex = (crc & 0xFFFF).toString(16).toUpperCase();
+      return hex.padStart(4, '0');
+    }
+
+    function createBakongKHQR(account, name, city, amount, billNo) {
+      // Merchant Account Information (Tag 29)
+      const subTag00 = formatEMVTag('00', account);
+      const tag29 = formatEMVTag('29', subTag00);
+
+      let payload = 
+        formatEMVTag('00', '01') +             // Payload Format Indicator
+        formatEMVTag('01', '12') +             // Point of Initiation (Dynamic: 12)
+        tag29 +                                // Merchant Account
+        formatEMVTag('52', '5999') +           // Merchant Category Code
+        formatEMVTag('53', '840') +            // Currency (840 = USD)
+        formatEMVTag('54', parseFloat(amount).toFixed(2)) + // Amount
+        formatEMVTag('58', 'KH') +             // Country Code
+        formatEMVTag('59', name) +             // Merchant Name
+        formatEMVTag('60', city);              // Merchant City
+
+      // Additional Data (Tag 62)
+      const subBill = formatEMVTag('01', billNo);
+      payload += formatEMVTag('62', subBill);
+
+      // CRC (Tag 63)
+      payload += '6304';
+      const checksum = crc16(payload);
+      return payload + checksum;
+    }
+
+    // ទិន្នន័យភាពយន្ត
     const MOVIES = [
       { id: 1, title: "The Last Ritual", img: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&q=80" },
       { id: 2, title: "Horror Night", img: "https://images.unsplash.com/photo-1518676590629-3dcbd9c5a5c9?w=500&q=80" },
@@ -35,30 +84,55 @@
 
     function App() {
       const [currentTab, setCurrentTab] = useState('home');
-      const [wallet, setWallet] = useState({ balance: 2.15, transactions: [] });
       const [showTopUp, setShowTopUp] = useState(false);
 
-      // ទាញយកទិន្នន័យ Wallet
-      const fetchWallet = async () => {
-        try {
-          const res = await fetch('http://localhost:5000/api/wallet');
-          const data = await res.json();
-          setWallet(data);
-        } catch (e) {
-          console.error("Backend not running, using offline dummy data");
-        }
-      };
+      // រក្សាទុក Balance និង Transactions ក្នុង LocalStorage
+      const [wallet, setWallet] = useState(() => {
+        const saved = localStorage.getItem('user_wallet');
+        return saved ? JSON.parse(saved) : {
+          balance: 2.15,
+          transactions: [
+            { id: 'ADC-696867-0066', date: '16 May 2026', type: 'expense', amount: 1.60 },
+            { id: 'ADC-696867-0065', date: '15 May 2026', type: 'expense', amount: 1.60 },
+            { id: 'ADC-696867-0064', date: '15 May 2026', type: 'expense', amount: 1.60 },
+            { id: 'ADC-696867-0063', date: '08 May 2026', type: 'expense', amount: 1.60 },
+            { id: 'WALLET-696867-0006', date: '08 May 2026', type: 'income', amount: 6.99 },
+            { id: 'ADC-696867-0062', date: '27 March 2026', type: 'expense', amount: 1.60 },
+            { id: 'WALLET-696867-0005', date: '24 March 2026', type: 'income', amount: 1.99 }
+          ]
+        };
+      });
 
       useEffect(() => {
-        fetchWallet();
-      }, []);
+        localStorage.setItem('user_wallet', JSON.stringify(wallet));
+      }, [wallet]);
+
+      useEffect(() => {
+        if (window.lucide) window.lucide.createIcons();
+      }, [currentTab]);
+
+      const handleAddFund = (amount, billNo) => {
+        const numAmount = parseFloat(amount);
+        setWallet(prev => ({
+          balance: parseFloat((prev.balance + numAmount).toFixed(2)),
+          transactions: [
+            {
+              id: billNo,
+              date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+              type: 'income',
+              amount: numAmount
+            },
+            ...prev.transactions
+          ]
+        }));
+      };
 
       return (
-        <div className="max-w-md mx-auto min-h-screen bg-[#0d0d0d] flex flex-col justify-between relative shadow-2xl pb-20">
+        <div className="max-w-md mx-auto min-h-screen bg-[#0d0d0d] flex flex-col justify-between relative shadow-2xl pb-20 border-x border-neutral-900">
           {/* Header */}
-          <header className="flex items-center justify-between px-4 py-3 sticky top-0 bg-[#0d0d0d]/90 backdrop-blur border-b border-neutral-900 z-40">
+          <header className="flex items-center justify-between px-4 py-3 sticky top-0 bg-[#0d0d0d]/95 backdrop-blur border-b border-neutral-900 z-40">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 bg-amber-500 rounded flex items-center justify-center font-bold text-black text-sm">A</div>
+              <div className="w-7 h-7 bg-amber-500 rounded flex items-center justify-center font-black text-black text-sm">A</div>
               <span className="text-lg font-bold tracking-wide text-white">Angkor DC</span>
             </div>
             <div className="flex items-center gap-4 text-neutral-300">
@@ -68,7 +142,7 @@
             </div>
           </header>
 
-          {/* Main Content Pages */}
+          {/* Main Content */}
           <main className="flex-1">
             {currentTab === 'home' && <HomePage onWatch={() => setCurrentTab('movies')} />}
             {currentTab === 'movies' && <MoviesPage />}
@@ -76,7 +150,7 @@
             {currentTab === 'library' && <LibraryPage />}
           </main>
 
-          {/* Bottom Navigation */}
+          {/* Bottom Nav */}
           <nav className="fixed bottom-0 max-w-md w-full bg-[#141414] border-t border-neutral-800 flex justify-around py-2.5 z-40">
             {[
               { id: 'home', label: 'Home', icon: 'home' },
@@ -95,32 +169,32 @@
             ))}
           </nav>
 
-          {/* Modal KHQR Top Up */}
+          {/* Top Up Modal */}
           {showTopUp && (
             <TopUpModal 
               onClose={() => setShowTopUp(false)} 
-              onSuccess={() => { setShowTopUp(false); fetchWallet(); }}
+              onSuccess={(amt, bill) => { 
+                handleAddFund(amt, bill);
+                setShowTopUp(false);
+              }}
             />
           )}
         </div>
       );
     }
 
-    // ទំព័រ Home
     function HomePage({ onWatch }) {
-      useEffect(() => { lucide.createIcons(); }, []);
       return (
         <div className="space-y-6">
-          {/* Banner Hero */}
           <div className="relative w-full h-[420px]">
             <img src={MOVIES[0].img} className="w-full h-full object-cover brightness-75" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d] via-transparent to-black/30"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d] via-transparent to-black/40"></div>
             <div className="absolute bottom-6 left-0 right-0 flex flex-col items-center gap-3">
               <h1 className="text-2xl font-black tracking-widest text-red-500 drop-shadow-md">THE LAST RITUAL</h1>
-              <button onClick={onWatch} className="bg-amber-400 hover:bg-amber-500 text-black font-bold px-8 py-2 rounded-full shadow-lg transition text-sm">
+              <button onClick={onWatch} className="bg-amber-400 hover:bg-amber-500 text-black font-bold px-8 py-2.5 rounded-full shadow-lg transition text-sm">
                 Watch Movie
               </button>
-              <div className="flex gap-1.5 mt-2">
+              <div className="flex gap-1.5 mt-1">
                 <span className="w-2 h-2 rounded-full bg-amber-400"></span>
                 <span className="w-2 h-2 rounded-full bg-neutral-600"></span>
                 <span className="w-2 h-2 rounded-full bg-neutral-600"></span>
@@ -128,15 +202,14 @@
             </div>
           </div>
 
-          {/* Movie Rows */}
-          {['Coming Soon', 'New Release', 'Horror-Comedy'].map((section, idx) => (
-            <div key={idx} className="px-4">
-              <h2 className="text-sm font-bold text-white mb-2 flex items-center gap-1 cursor-pointer">
-                {section} <span className="text-amber-400 text-xs">›</span>
+          {['Coming Soon', 'New Release', 'Horror-Comedy'].map((sec, i) => (
+            <div key={i} className="px-4">
+              <h2 className="text-sm font-bold text-white mb-2 flex items-center gap-1">
+                {sec} <span className="text-amber-400 text-xs">›</span>
               </h2>
               <div className="flex gap-3 overflow-x-auto no-scrollbar py-1">
                 {MOVIES.map(m => (
-                  <div key={m.id} className="flex-none w-32 rounded-md overflow-hidden bg-neutral-900 border border-neutral-800">
+                  <div key={m.id} className="flex-none w-32 rounded-lg overflow-hidden bg-neutral-900 border border-neutral-800">
                     <img src={m.img} className="w-full h-44 object-cover" />
                   </div>
                 ))}
@@ -147,14 +220,13 @@
       );
     }
 
-    // ទំព័រ All Movies
     function MoviesPage() {
       return (
         <div className="p-4">
-          <h1 className="text-lg font-bold text-white mb-4 text-center">All Movies</h1>
+          <h1 className="text-base font-bold text-center text-white mb-4">All Movies</h1>
           <div className="grid grid-cols-3 gap-2.5">
-            {[...MOVIES, ...MOVIES, ...MOVIES].map((m, idx) => (
-              <div key={idx} className="rounded-md overflow-hidden bg-neutral-900 border border-neutral-800">
+            {[...MOVIES, ...MOVIES, ...MOVIES].map((m, i) => (
+              <div key={i} className="rounded-lg overflow-hidden bg-neutral-900 border border-neutral-800">
                 <img src={m.img} className="w-full h-40 object-cover" />
               </div>
             ))}
@@ -163,14 +235,11 @@
       );
     }
 
-    // ទំព័រ Wallet (មានកត់ត្រា Balance និង History ដូចក្នុងវីដេអូ)
     function WalletPage({ wallet, onOpenTopUp }) {
-      useEffect(() => { lucide.createIcons(); }, []);
       return (
         <div className="p-4 space-y-4">
-          <h1 className="text-lg font-bold text-center text-white mb-2">Wallet</h1>
+          <h1 className="text-base font-bold text-center text-white mb-2">Wallet</h1>
 
-          {/* Balance Card */}
           <div className="bg-[#171717] border border-neutral-800 rounded-2xl p-4 flex items-center justify-between">
             <div>
               <p className="text-xs text-neutral-400">Balance</p>
@@ -181,7 +250,6 @@
             </button>
           </div>
 
-          {/* Transactions List */}
           <div className="space-y-2 mt-4">
             {wallet.transactions.map((tx, idx) => (
               <div key={idx} className="flex items-center justify-between py-3 border-b border-neutral-900">
@@ -204,14 +272,13 @@
       );
     }
 
-    // ទំព័រ Library
     function LibraryPage() {
       return (
         <div className="p-4">
-          <h1 className="text-lg font-bold text-center text-white mb-4">My Library</h1>
+          <h1 className="text-base font-bold text-center text-white mb-4">My Library</h1>
           <div className="grid grid-cols-3 gap-2.5">
-            {MOVIES.slice(0, 3).map((m, idx) => (
-              <div key={idx} className="rounded-md overflow-hidden bg-neutral-900 border border-neutral-800">
+            {MOVIES.slice(0, 3).map((m, i) => (
+              <div key={i} className="rounded-lg overflow-hidden bg-neutral-900 border border-neutral-800">
                 <img src={m.img} className="w-full h-40 object-cover" />
               </div>
             ))}
@@ -220,67 +287,47 @@
       );
     }
 
-    // Pop-up Modal ស្កេន Bakong KHQR
     function TopUpModal({ onClose, onSuccess }) {
       const [amount, setAmount] = useState('1.99');
-      const [qrData, setQrData] = useState(null);
-      const [loading, setLoading] = useState(false);
-      const qrContainerRef = useRef(null);
+      const [qrString, setQrString] = useState('');
+      const [billNo, setBillNo] = useState('');
+      const qrRef = useRef(null);
 
-      const handleGetQR = async () => {
-        setLoading(true);
-        try {
-          const res = await fetch('http://localhost:5000/api/wallet/generate-khqr', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ amount })
-          });
-          const data = await res.json();
-          if (data.success) {
-            setQrData(data);
-          }
-        } catch (e) {
-          alert('សូមបើក Backend Server ជាមុន (node server.js)');
-        } finally {
-          setLoading(false);
-        }
+      const handleCreateQR = () => {
+        const generatedBill = 'WALLET-' + Math.floor(100000 + Math.random() * 900000);
+        setBillNo(generatedBill);
+        
+        // បង្កើត Bakong KHQR ជាមួយគណនីរបស់អ្នកផ្ទាល់
+        const khqr = createBakongKHQR(
+          'samnang_mon@bkrt',
+          'SAMNANG MON',
+          'Phnom Penh',
+          amount,
+          generatedBill
+        );
+        setQrString(khqr);
       };
 
-      // បង្ហាញ QR Code នៅពេលទទួលបាន qrString
       useEffect(() => {
-        if (qrData && qrContainerRef.current) {
-          qrContainerRef.current.innerHTML = '';
-          new QRCode(qrContainerRef.current, {
-            text: qrData.qrString,
+        if (qrString && qrRef.current) {
+          qrRef.current.innerHTML = '';
+          new QRCode(qrRef.current, {
+            text: qrString,
             width: 170,
             height: 170,
             correctLevel: QRCode.CorrectLevel.M
           });
         }
-      }, [qrData]);
-
-      // បញ្ជាក់ថាបានបាញ់លុយរួច
-      const handleConfirm = async () => {
-        try {
-          await fetch('http://localhost:5000/api/wallet/confirm-topup', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ amount: qrData.amount, billNumber: qrData.billNumber })
-          });
-          alert('បញ្ចូលទឹកប្រាក់ជោគជ័យ!');
-          onSuccess();
-        } catch (e) {
-          alert('បរាជ័យក្នុងការបញ្ចូលលុយ');
-        }
-      };
+      }, [qrString]);
 
       return (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
-          <div className="bg-[#171717] border border-neutral-800 rounded-2xl p-5 w-full max-w-xs text-center shadow-xl">
-            {!qrData ? (
+        <div className="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50">
+          <div className="bg-[#171717] border border-neutral-800 rounded-2xl p-5 w-full max-w-xs text-center shadow-2xl">
+            {!qrString ? (
               <div>
                 <h3 className="text-base font-bold text-white mb-2">បញ្ចូលទឹកប្រាក់ (Top Up)</h3>
                 <p className="text-neutral-400 text-xs mb-4">ជ្រើសរើសចំនួនទឹកប្រាក់ ($ USD)</p>
+                
                 <div className="grid grid-cols-3 gap-2 mb-5">
                   {['1.60', '1.99', '5.00', '6.99', '10.00'].map(val => (
                     <button
@@ -294,12 +341,12 @@
                     </button>
                   ))}
                 </div>
+
                 <button
-                  onClick={handleGetQR}
-                  disabled={loading}
+                  onClick={handleCreateQR}
                   className="w-full bg-amber-400 hover:bg-amber-500 text-black font-bold py-2.5 rounded-xl text-xs transition"
                 >
-                  {loading ? 'កំពុងបង្កើត...' : `បន្តទូទាត់ $${amount}`}
+                  បន្តទូទាត់ ${amount}
                 </button>
                 <button onClick={onClose} className="text-neutral-500 text-xs mt-3 block w-full">បោះបង់</button>
               </div>
@@ -308,20 +355,24 @@
                 <div className="bg-red-600 text-white font-black px-4 py-0.5 rounded-t text-[10px] tracking-wider mb-2">
                   BAKONG KHQR
                 </div>
-                <div className="bg-white p-2.5 rounded-xl mb-3 shadow-inner" ref={qrContainerRef}></div>
-                <p className="text-xs font-bold text-neutral-200">SAMNANG MON</p>
-                <p className="text-amber-400 font-black text-xl my-1">${qrData.amount} USD</p>
-                <p className="text-neutral-500 text-[10px] mb-3">ស្កេនជាមួយ Bakong ឬ App ធនាគារនានា</p>
                 
+                {/* ផ្ទាំង QR Code */}
+                <div className="bg-white p-2 rounded-xl mb-3 shadow-inner flex justify-center items-center" ref={qrRef}></div>
+
+                <p className="text-xs font-bold text-neutral-200">SAMNANG MON</p>
+                <p className="text-amber-400 font-black text-xl my-0.5">${parseFloat(amount).toFixed(2)} USD</p>
+                <p className="text-neutral-500 text-[10px] mb-3 font-mono">{billNo}</p>
+
                 <a 
-                  href={qrData.deepLink}
+                  href={`bakong://qr?qr=${encodeURIComponent(qrString)}`}
                   className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-xl text-xs font-bold mb-2 block"
                 >
                   បើក Bakong App
                 </a>
+                
                 <button 
-                  onClick={handleConfirm}
-                  className="w-full bg-amber-400 hover:bg-amber-500 text-black py-2 rounded-xl text-xs font-bold mb-2"
+                  onClick={() => onSuccess(amount, billNo)}
+                  className="w-full bg-amber-400 hover:bg-amber-500 text-black py-2 rounded-xl text-xs font-bold mb-2 transition"
                 >
                   ខ្ញុំបានបាញ់លុយរួចរាល់
                 </button>
