@@ -1,635 +1,339 @@
 <!DOCTYPE html>
 <html lang="km">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Angkor Media - វេបសាយទស្សនារឿងកម្សាន្ត</title>
-    <!-- QRCode JS Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Kantumruy Pro', 'Segoe UI', Tahoma, sans-serif;
-        }
-
-        body {
-            background-color: #f4f6f9;
-            color: #333;
-            padding-bottom: 60px;
-        }
-
-        /* ── Header បែប AngkorPC ── */
-        header {
-            background-color: #0b3b60;
-            color: #fff;
-            padding: 12px 5%;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        .logo {
-            font-size: 22px;
-            font-weight: bold;
-            color: #ffcc00;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .logo span { color: #fff; }
-
-        .user-panel {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .wallet-badge {
-            background-color: rgba(255, 255, 255, 0.15);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 13px;
-            color: #fff;
-        }
-
-        .wallet-badge span {
-            color: #00ffcc;
-            font-weight: bold;
-        }
-
-        .btn-topup {
-            background-color: #ff9900;
-            color: #fff;
-            border: none;
-            padding: 7px 15px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 13px;
-            transition: 0.2s;
-        }
-
-        .btn-topup:hover { background-color: #e68a00; }
-
-        /* ── Search & Filter Bar ── */
-        .sub-header {
-            background-color: #fff;
-            padding: 15px 5%;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
-            border-bottom: 1px solid #e1e4e8;
-        }
-
-        .search-box input {
-            padding: 8px 15px;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-            outline: none;
-            width: 250px;
-            font-size: 14px;
-        }
-
-        .search-box input:focus { border-color: #0b3b60; }
-
-        .filter-bar {
-            display: flex;
-            gap: 8px;
-        }
-
-        .filter-btn {
-            background-color: #f0f2f5;
-            color: #555;
-            border: 1px solid #ddd;
-            padding: 7px 14px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 500;
-            transition: 0.2s;
-        }
-
-        .filter-btn.active, .filter-btn:hover {
-            background-color: #0b3b60;
-            color: #fff;
-            border-color: #0b3b60;
-        }
-
-        /* ── Product Grid ── */
-        .container {
-            padding: 20px 5%;
-        }
-
-        .grid-title {
-            font-size: 18px;
-            color: #0b3b60;
-            margin-bottom: 15px;
-            font-weight: bold;
-            border-left: 4px solid #0b3b60;
-            padding-left: 10px;
-        }
-
-        .product-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 20px;
-        }
-
-        .product-card {
-            background-color: #fff;
-            border-radius: 8px;
-            overflow: hidden;
-            border: 1px solid #e1e4e8;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.04);
-            display: flex;
-            flex-direction: column;
-            transition: all 0.2s ease-in-out;
-        }
-
-        .product-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 6px 15px rgba(0,0,0,0.1);
-        }
-
-        .poster-wrapper {
-            position: relative;
-            width: 100%;
-            height: 220px;
-            background-color: #eee;
-        }
-
-        .poster-wrapper img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .badge {
-            position: absolute;
-            top: 8px;
-            left: 8px;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: bold;
-        }
-
-        .badge.free { background-color: #28a745; color: #fff; }
-        .badge.vip { background-color: #dc3545; color: #fff; }
-
-        .product-info {
-            padding: 12px;
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-
-        .product-title {
-            font-size: 14px;
-            font-weight: bold;
-            color: #222;
-            margin-bottom: 8px;
-            line-height: 1.4;
-            height: 38px;
-            overflow: hidden;
-        }
-
-        .price-tag {
-            color: #d9232d;
-            font-size: 16px;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
-
-        .btn-view {
-            background-color: #0b3b60;
-            color: #fff;
-            border: none;
-            padding: 8px 0;
-            border-radius: 5px;
-            cursor: pointer;
-            width: 100%;
-            font-size: 13px;
-            font-weight: bold;
-            transition: 0.2s;
-        }
-
-        .btn-view:hover { background-color: #082842; }
-
-        /* ── Modals ── */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            z-index: 200;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .modal-content {
-            background-color: #fff;
-            width: 90%;
-            max-width: 750px;
-            border-radius: 8px;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .modal-header {
-            background-color: #0b3b60;
-            color: #fff;
-            padding: 12px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .close-btn {
-            font-size: 24px;
-            color: #fff;
-            cursor: pointer;
-        }
-
-        .video-box {
-            width: 100%;
-            height: 420px;
-            background-color: #000;
-        }
-
-        .video-box video {
-            width: 100%;
-            height: 100%;
-            outline: none;
-        }
-
-        .lock-container {
-            padding: 40px 20px;
-            text-align: center;
-        }
-
-        .topup-card {
-            background-color: #fff;
-            width: 90%;
-            max-width: 420px;
-            border-radius: 8px;
-            padding: 22px;
-            text-align: center;
-        }
-
-        .amount-selector {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            margin: 12px 0;
-        }
-
-        .amt-btn {
-            background: #f0f2f5;
-            border: 1px solid #ccc;
-            padding: 8px 0;
-            border-radius: 6px;
-            font-weight: bold;
-            color: #0b3b60;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
-        .amt-btn.active, .amt-btn:hover {
-            background: #0b3b60;
-            color: #fff;
-            border-color: #0b3b60;
-        }
-
-        .qr-placeholder {
-            margin: 12px auto;
-            width: 190px;
-            height: 190px;
-            padding: 5px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #fff;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Angkor DC Web</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- React & Babel -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- QR Code Generator -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <style>
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
 </head>
-<body>
+<body class="bg-black text-white font-sans selection:bg-amber-400 selection:text-black">
+  <div id="root"></div>
 
-    <header>
-        <div class="logo">🛒 Angkor<span>Media</span></div>
-        <div class="user-panel">
-            <div class="wallet-badge">សមតុល្យ: <span id="userBalanceDisplay">$0.00</span></div>
-            <button class="btn-topup" onclick="openTopUpModal()">💳 ដាក់ប្រាក់</button>
-        </div>
-    </header>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
 
-    <div class="sub-header">
-        <div class="search-box">
-            <input type="text" id="searchInput" placeholder="ស្វែងរករឿង..." onkeyup="filterMovies()">
-        </div>
-        <div class="filter-bar">
-            <button class="filter-btn active" onclick="setCategory('all')">ទាំងអស់</button>
-            <button class="filter-btn" onclick="setCategory('vip')">🔒 VIP Movie</button>
-            <button class="filter-btn" onclick="setCategory('free')">🎁 រឿង Free</button>
-        </div>
-    </div>
+    // ទិន្នន័យភាពយន្តគំរូ
+    const MOVIES = [
+      { id: 1, title: "The Last Ritual", img: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&q=80" },
+      { id: 2, title: "Horror Night", img: "https://images.unsplash.com/photo-1518676590629-3dcbd9c5a5c9?w=500&q=80" },
+      { id: 3, title: "The Dark Soul", img: "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=500&q=80" },
+      { id: 4, title: "Ancient Mystery", img: "https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=500&q=80" }
+    ];
 
-    <div class="container">
-        <div class="grid-title">បញ្ជីទស្សនាពេញនិយម</div>
-        <div class="product-grid" id="movieContainer"></div>
-    </div>
+    function App() {
+      const [currentTab, setCurrentTab] = useState('home');
+      const [wallet, setWallet] = useState({ balance: 2.15, transactions: [] });
+      const [showTopUp, setShowTopUp] = useState(false);
 
-    <!-- Modal Player / Payment -->
-    <div class="modal" id="videoModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <span id="modalHeaderTitle">ទស្សនាវីដេអូ</span>
-                <span class="close-btn" onclick="closePlayer()">&times;</span>
+      // ទាញយកទិន្នន័យ Wallet
+      const fetchWallet = async () => {
+        try {
+          const res = await fetch('http://localhost:5000/api/wallet');
+          const data = await res.json();
+          setWallet(data);
+        } catch (e) {
+          console.error("Backend not running, using offline dummy data");
+        }
+      };
+
+      useEffect(() => {
+        fetchWallet();
+      }, []);
+
+      return (
+        <div className="max-w-md mx-auto min-h-screen bg-[#0d0d0d] flex flex-col justify-between relative shadow-2xl pb-20">
+          {/* Header */}
+          <header className="flex items-center justify-between px-4 py-3 sticky top-0 bg-[#0d0d0d]/90 backdrop-blur border-b border-neutral-900 z-40">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 bg-amber-500 rounded flex items-center justify-center font-bold text-black text-sm">A</div>
+              <span className="text-lg font-bold tracking-wide text-white">Angkor DC</span>
             </div>
-            <div id="modalBody"></div>
-        </div>
-    </div>
-
-    <!-- Modal Top Up -->
-    <div class="modal" id="topupModal">
-        <div class="topup-card">
-            <h3 style="color:#0b3b60; margin-bottom:4px;">💳 ដាក់ប្រាក់តាម KHQR</h3>
-            <p style="color:#666; font-size: 13px;">ជ្រើសរើសចំនួនទឹកប្រាក់ដែលអ្នកចង់ដាក់៖</p>
-            
-            <div class="amount-selector">
-                <button class="amt-btn active" onclick="selectDepositAmount(1.00, this)">$1.00</button>
-                <button class="amt-btn" onclick="selectDepositAmount(2.00, this)">$2.00</button>
-                <button class="amt-btn" onclick="selectDepositAmount(5.00, this)">$5.00</button>
-                <button class="amt-btn" onclick="selectDepositAmount(10.00, this)">$10.00</button>
-                <button class="amt-btn" onclick="selectDepositAmount(20.00, this)">$20.00</button>
-                <button class="amt-btn" onclick="selectDepositAmount(50.00, this)">$50.00</button>
+            <div className="flex items-center gap-4 text-neutral-300">
+              <i data-lucide="search" className="w-5 h-5 cursor-pointer"></i>
+              <i data-lucide="bell" className="w-5 h-5 cursor-pointer"></i>
+              <i data-lucide="user" className="w-5 h-5 cursor-pointer"></i>
             </div>
+          </header>
 
-            <div class="qr-placeholder" id="qrContainer"></div>
-            
-            <div style="background:#eef6fc; border:1px solid #bde0fe; border-radius:6px; padding:10px 12px; margin:10px 0; font-size:13px; text-align:left;">
-                <p>👤 ឈ្មោះគណនី: <b>Smey Lov</b></p>
-                <p>👉 ទឹកប្រាក់ត្រូវផ្ទេរ: <b id="displayLockedAmount" style="color:#d9232d; font-size:16px;">$1.00</b></p>
-                <p style="color:#555; font-size:12px; margin-top:3px;"><i>* សូមបញ្ចូលទឹកប្រាក់ចំនួនខាងលើនេះក្នុង App ធនាគាររបស់អ្នក</i></p>
-            </div>
+          {/* Main Content Pages */}
+          <main className="flex-1">
+            {currentTab === 'home' && <HomePage onWatch={() => setCurrentTab('movies')} />}
+            {currentTab === 'movies' && <MoviesPage />}
+            {currentTab === 'wallet' && <WalletPage wallet={wallet} onOpenTopUp={() => setShowTopUp(true)} />}
+            {currentTab === 'library' && <LibraryPage />}
+          </main>
 
-            <a href="https://t.me/SmeyLov008" target="_blank" class="btn-topup" style="display:block; text-decoration:none; width:100%; border-radius:5px; padding:10px; background:#0088cc;">
-                ✈️ ផ្ញើវិក្កយបត្រ (Slip) ជូន Admin
-            </a>
-            
-            <button onclick="closeTopUpModal()" style="margin-top:10px; background:none; border:none; color:#888; cursor:pointer; font-size:13px;">បិទផ្ទាំង</button>
+          {/* Bottom Navigation */}
+          <nav className="fixed bottom-0 max-w-md w-full bg-[#141414] border-t border-neutral-800 flex justify-around py-2.5 z-40">
+            {[
+              { id: 'home', label: 'Home', icon: 'home' },
+              { id: 'movies', label: 'All Movies', icon: 'film' },
+              { id: 'wallet', label: 'Wallet', icon: 'wallet' },
+              { id: 'library', label: 'Library', icon: 'bookmark' },
+            ].map(tab => (
+              <button 
+                key={tab.id} 
+                onClick={() => setCurrentTab(tab.id)}
+                className={`flex flex-col items-center gap-1 ${currentTab === tab.id ? 'text-amber-400' : 'text-neutral-500'}`}
+              >
+                <i data-lucide={tab.icon} className="w-5 h-5"></i>
+                <span className="text-[10px] font-medium">{tab.label}</span>
+              </button>
+            ))}
+          </nav>
+
+          {/* Modal KHQR Top Up */}
+          {showTopUp && (
+            <TopUpModal 
+              onClose={() => setShowTopUp(false)} 
+              onSuccess={() => { setShowTopUp(false); fetchWallet(); }}
+            />
+          )}
         </div>
-    </div>
+      );
+    }
 
-    <script>
-        let userBalance = parseFloat(localStorage.getItem("user_balance")) || 0.00;
-        let selectedAmount = 1.00;
+    // ទំព័រ Home
+    function HomePage({ onWatch }) {
+      useEffect(() => { lucide.createIcons(); }, []);
+      return (
+        <div className="space-y-6">
+          {/* Banner Hero */}
+          <div className="relative w-full h-[420px]">
+            <img src={MOVIES[0].img} className="w-full h-full object-cover brightness-75" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d] via-transparent to-black/30"></div>
+            <div className="absolute bottom-6 left-0 right-0 flex flex-col items-center gap-3">
+              <h1 className="text-2xl font-black tracking-widest text-red-500 drop-shadow-md">THE LAST RITUAL</h1>
+              <button onClick={onWatch} className="bg-amber-400 hover:bg-amber-500 text-black font-bold px-8 py-2 rounded-full shadow-lg transition text-sm">
+                Watch Movie
+              </button>
+              <div className="flex gap-1.5 mt-2">
+                <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                <span className="w-2 h-2 rounded-full bg-neutral-600"></span>
+                <span className="w-2 h-2 rounded-full bg-neutral-600"></span>
+              </div>
+            </div>
+          </div>
 
-        const movies = [
-            {
-                id: "m1",
-                title: "រឿង កូនស្រីមហាសេដ្ឋីបន្លំខ្លួន (Full HD)",
-                category: "free",
-                price: 0.00,
-                poster: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400",
-                videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
-            },
-            {
-                id: "m2",
-                title: "រឿង វីរបុរសកម្ចាត់ក្រុមបិសាច (VIP)",
-                category: "vip",
-                price: 0.50,
-                poster: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400",
-                videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4"
-            },
-            {
-                id: "m3",
-                title: "រឿង កំប្លែងខ្លីៗ ជួបស្នេហ៍ពិត (Free)",
-                category: "free",
-                price: 0.00,
-                poster: "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=400",
-                videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4"
-            },
-            {
-                id: "m4",
-                title: "រឿង សង្គ្រាមចក្រវាលសងសឹក (VIP)",
-                category: "vip",
-                price: 1.00,
-                poster: "https://images.unsplash.com/photo-1478760329108-5c3ed9d495a0?w=400",
-                videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4"
-            }
-        ];
+          {/* Movie Rows */}
+          {['Coming Soon', 'New Release', 'Horror-Comedy'].map((section, idx) => (
+            <div key={idx} className="px-4">
+              <h2 className="text-sm font-bold text-white mb-2 flex items-center gap-1 cursor-pointer">
+                {section} <span className="text-amber-400 text-xs">›</span>
+              </h2>
+              <div className="flex gap-3 overflow-x-auto no-scrollbar py-1">
+                {MOVIES.map(m => (
+                  <div key={m.id} className="flex-none w-32 rounded-md overflow-hidden bg-neutral-900 border border-neutral-800">
+                    <img src={m.img} className="w-full h-44 object-cover" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
 
-        let currentFilter = 'all';
+    // ទំព័រ All Movies
+    function MoviesPage() {
+      return (
+        <div className="p-4">
+          <h1 className="text-lg font-bold text-white mb-4 text-center">All Movies</h1>
+          <div className="grid grid-cols-3 gap-2.5">
+            {[...MOVIES, ...MOVIES, ...MOVIES].map((m, idx) => (
+              <div key={idx} className="rounded-md overflow-hidden bg-neutral-900 border border-neutral-800">
+                <img src={m.img} className="w-full h-40 object-cover" />
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
 
-        function updateBalanceDisplay() {
-            document.getElementById("userBalanceDisplay").innerText = `$${userBalance.toFixed(2)}`;
-            localStorage.setItem("user_balance", userBalance.toFixed(2));
-        }
+    // ទំព័រ Wallet (មានកត់ត្រា Balance និង History ដូចក្នុងវីដេអូ)
+    function WalletPage({ wallet, onOpenTopUp }) {
+      useEffect(() => { lucide.createIcons(); }, []);
+      return (
+        <div className="p-4 space-y-4">
+          <h1 className="text-lg font-bold text-center text-white mb-2">Wallet</h1>
 
-        function renderMovies(data) {
-            const container = document.getElementById("movieContainer");
-            container.innerHTML = "";
+          {/* Balance Card */}
+          <div className="bg-[#171717] border border-neutral-800 rounded-2xl p-4 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-neutral-400">Balance</p>
+              <h2 className="text-2xl font-bold text-amber-400">${wallet.balance.toFixed(2)} $</h2>
+            </div>
+            <button onClick={onOpenTopUp} className="bg-amber-400 hover:bg-amber-500 text-black font-bold px-5 py-2 rounded-xl text-xs transition">
+              Top Up
+            </button>
+          </div>
 
-            if (data.length === 0) {
-                container.innerHTML = "<p style='grid-column: 1/-1; text-align:center; padding:30px; color:#888;'>រកមិនឃើញរឿងដែលស្វែងរកទេ!</p>";
-                return;
-            }
-
-            data.forEach(m => {
-                const card = document.createElement("div");
-                card.className = "product-card";
-                const isFree = (m.category === "free");
-                const priceTag = isFree ? "ឥតគិតថ្លៃ" : `$${m.price.toFixed(2)}`;
-                const badgeClass = isFree ? "free" : "vip";
-
-                card.innerHTML = `
-                    <div class="poster-wrapper">
-                        <img src="${m.poster}" alt="${m.title}">
-                        <span class="badge ${badgeClass}">${isFree ? 'Free' : 'VIP'}</span>
-                    </div>
-                    <div class="product-info">
-                        <div class="product-title">${m.title}</div>
-                        <div class="price-tag">${priceTag}</div>
-                        <button class="btn-view" onclick="handleMovieClick('${m.id}')">
-                            ${isFree ? '▶️ ទស្សនា' : '🔒 ទិញទស្សនា'}
-                        </button>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-        }
-
-        function handleMovieClick(movieId) {
-            const movie = movies.find(x => x.id === movieId);
-            if (!movie) return;
-
-            const modalBody = document.getElementById("modalBody");
-            document.getElementById("modalHeaderTitle").innerText = movie.title;
-
-            if (movie.category === "free") {
-                playVideo(movie.videoUrl);
-                return;
-            }
-
-            if (userBalance < movie.price) {
-                modalBody.innerHTML = `
-                    <div class="lock-container">
-                        <div style="font-size:45px; margin-bottom:10px;">🔒</div>
-                        <h3 style="color:#0b3b60; margin-bottom:8px;">មាតិកានេះសម្រាប់តែសមាជិក VIP!</h3>
-                        <p style="color:#666; margin-bottom:12px;">តម្លៃទស្សនា: <b style="color:#d9232d;">$${movie.price.toFixed(2)}</b></p>
-                        <p style="color:#d9232d; font-size:13px; margin-bottom:15px;">សមតុល្យរបស់អ្នកមិនគ្រប់គ្រាន់ទេ ($${userBalance.toFixed(2)})</p>
-                        <button class="btn-topup" style="border-radius:4px; padding:10px 20px;" onclick="closePlayer(); openTopUpModal();">💳 ដាក់ប្រាក់ឥឡូវនេះ</button>
-                    </div>
-                `;
-            } else {
-                modalBody.innerHTML = `
-                    <div class="lock-container">
-                        <div style="font-size:45px; margin-bottom:10px;">🎟️</div>
-                        <h3 style="color:#0b3b60; margin-bottom:8px;">បញ្ជាក់ការទូទាត់</h3>
-                        <p style="color:#666; margin-bottom:12px;">តម្លៃ: <b style="color:#d9232d;">$${movie.price.toFixed(2)}</b> (កាបូបនៅសល់: $${userBalance.toFixed(2)})</p>
-                        <button class="btn-topup" style="background:#0b3b60; border-radius:4px; padding:10px 20px;" onclick="confirmPayment('${movie.id}')">🔓 កាត់ $${movie.price.toFixed(2)} ដើម្បីទស្សនា</button>
-                    </div>
-                `;
-            }
-            document.getElementById("videoModal").style.display = "flex";
-        }
-
-        function confirmPayment(movieId) {
-            const movie = movies.find(x => x.id === movieId);
-            if (!movie || userBalance < movie.price) return;
-            userBalance -= movie.price;
-            updateBalanceDisplay();
-            playVideo(movie.videoUrl);
-        }
-
-        function playVideo(url) {
-            const modalBody = document.getElementById("modalBody");
-            modalBody.innerHTML = `
-                <div class="video-box">
-                    <video controls autoplay>
-                        <source src="${url}" type="video/mp4">
-                    </video>
+          {/* Transactions List */}
+          <div className="space-y-2 mt-4">
+            {wallet.transactions.map((tx, idx) => (
+              <div key={idx} className="flex items-center justify-between py-3 border-b border-neutral-900">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-neutral-800 flex items-center justify-center">
+                    <i data-lucide={tx.type === 'income' ? 'wallet' : 'shopping-cart'} className="w-4 h-4 text-neutral-300"></i>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-neutral-400">{tx.date}</p>
+                    <p className="text-xs font-mono text-neutral-200">{tx.id}</p>
+                  </div>
                 </div>
-            `;
-            document.getElementById("videoModal").style.display = "flex";
+                <div className={`font-bold text-sm ${tx.type === 'income' ? 'text-green-500' : 'text-red-500'}`}>
+                  {tx.type === 'income' ? `+${tx.amount.toFixed(2)} $` : `-${tx.amount.toFixed(2)} $`}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ទំព័រ Library
+    function LibraryPage() {
+      return (
+        <div className="p-4">
+          <h1 className="text-lg font-bold text-center text-white mb-4">My Library</h1>
+          <div className="grid grid-cols-3 gap-2.5">
+            {MOVIES.slice(0, 3).map((m, idx) => (
+              <div key={idx} className="rounded-md overflow-hidden bg-neutral-900 border border-neutral-800">
+                <img src={m.img} className="w-full h-40 object-cover" />
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // Pop-up Modal ស្កេន Bakong KHQR
+    function TopUpModal({ onClose, onSuccess }) {
+      const [amount, setAmount] = useState('1.99');
+      const [qrData, setQrData] = useState(null);
+      const [loading, setLoading] = useState(false);
+      const qrContainerRef = useRef(null);
+
+      const handleGetQR = async () => {
+        setLoading(true);
+        try {
+          const res = await fetch('http://localhost:5000/api/wallet/generate-khqr', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amount })
+          });
+          const data = await res.json();
+          if (data.success) {
+            setQrData(data);
+          }
+        } catch (e) {
+          alert('សូមបើក Backend Server ជាមុន (node server.js)');
+        } finally {
+          setLoading(false);
         }
+      };
 
-        function closePlayer() {
-            const video = document.querySelector("#modalBody video");
-            if (video) video.pause();
-            document.getElementById("modalBody").innerHTML = "";
-            document.getElementById("videoModal").style.display = "none";
+      // បង្ហាញ QR Code នៅពេលទទួលបាន qrString
+      useEffect(() => {
+        if (qrData && qrContainerRef.current) {
+          qrContainerRef.current.innerHTML = '';
+          new QRCode(qrContainerRef.current, {
+            text: qrData.qrString,
+            width: 170,
+            height: 170,
+            correctLevel: QRCode.CorrectLevel.M
+          });
         }
+      }, [qrData]);
 
-        /* ── ក្បួនគណនា Static KHQR (ស្ដង់ដារបុគ្គល 100% Valid សម្រាប់ ABA & Bakong) ── */
-        function calculateCRC16(data) {
-            let crc = 0xFFFF;
-            for (let i = 0; i < data.length; i++) {
-                crc ^= data.charCodeAt(i) << 8;
-                for (let j = 0; j < 8; j++) {
-                    if ((crc & 0x8000) !== 0) {
-                        crc = ((crc << 1) ^ 0x1021) & 0xFFFF;
-                    } else {
-                        crc = (crc << 1) & 0xFFFF;
-                    }
-                }
-            }
-            return crc.toString(16).toUpperCase().padStart(4, '0');
+      // បញ្ជាក់ថាបានបាញ់លុយរួច
+      const handleConfirm = async () => {
+        try {
+          await fetch('http://localhost:5000/api/wallet/confirm-topup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amount: qrData.amount, billNumber: qrData.billNumber })
+          });
+          alert('បញ្ចូលទឹកប្រាក់ជោគជ័យ!');
+          onSuccess();
+        } catch (e) {
+          alert('បរាជ័យក្នុងការបញ្ចូលលុយ');
         }
+      };
 
-        function formatTag(tag, val) {
-            const len = String(val.length).padStart(2, '0');
-            return tag + len + val;
-        }
+      return (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+          <div className="bg-[#171717] border border-neutral-800 rounded-2xl p-5 w-full max-w-xs text-center shadow-xl">
+            {!qrData ? (
+              <div>
+                <h3 className="text-base font-bold text-white mb-2">បញ្ចូលទឹកប្រាក់ (Top Up)</h3>
+                <p className="text-neutral-400 text-xs mb-4">ជ្រើសរើសចំនួនទឹកប្រាក់ ($ USD)</p>
+                <div className="grid grid-cols-3 gap-2 mb-5">
+                  {['1.60', '1.99', '5.00', '6.99', '10.00'].map(val => (
+                    <button
+                      key={val}
+                      onClick={() => setAmount(val)}
+                      className={`py-2 rounded-lg border text-xs font-semibold ${
+                        amount === val ? 'border-amber-400 bg-amber-400/10 text-amber-400' : 'border-neutral-800 text-neutral-300'
+                      }`}
+                    >
+                      ${val}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={handleGetQR}
+                  disabled={loading}
+                  className="w-full bg-amber-400 hover:bg-amber-500 text-black font-bold py-2.5 rounded-xl text-xs transition"
+                >
+                  {loading ? 'កំពុងបង្កើត...' : `បន្តទូទាត់ $${amount}`}
+                </button>
+                <button onClick={onClose} className="text-neutral-500 text-xs mt-3 block w-full">បោះបង់</button>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center">
+                <div className="bg-red-600 text-white font-black px-4 py-0.5 rounded-t text-[10px] tracking-wider mb-2">
+                  BAKONG KHQR
+                </div>
+                <div className="bg-white p-2.5 rounded-xl mb-3 shadow-inner" ref={qrContainerRef}></div>
+                <p className="text-xs font-bold text-neutral-200">SAMNANG MON</p>
+                <p className="text-amber-400 font-black text-xl my-1">${qrData.amount} USD</p>
+                <p className="text-neutral-500 text-[10px] mb-3">ស្កេនជាមួយ Bakong ឬ App ធនាគារនានា</p>
+                
+                <a 
+                  href={qrData.deepLink}
+                  className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-xl text-xs font-bold mb-2 block"
+                >
+                  បើក Bakong App
+                </a>
+                <button 
+                  onClick={handleConfirm}
+                  className="w-full bg-amber-400 hover:bg-amber-500 text-black py-2 rounded-xl text-xs font-bold mb-2"
+                >
+                  ខ្ញុំបានបាញ់លុយរួចរាល់
+                </button>
+                <button onClick={onClose} className="text-neutral-500 text-xs">បិទផ្ទាំង</button>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
 
-        function generateBakongKHQR() {
-            const bankAccount = "samnang_mon@bkrt";
-            const merchantName = "Smey Lov";
-            const merchantCity = "Phnom Penh";
-
-            // Tag 29 បុគ្គលតាមស្តង់ដារ NBC
-            const sub29 = formatTag("00", bankAccount) + formatTag("01", bankAccount);
-            
-            let payload = 
-                formatTag("00", "01") +             // Payload Format Indicator
-                formatTag("01", "11") +             // 11 = Static QR (ស្តង់ដារគណនីបុគ្គល)
-                formatTag("29", sub29) +            // Merchant Account
-                formatTag("52", "5999") +           // MCC
-                formatTag("53", "840") +            // Currency USD
-                formatTag("58", "KH") +             // Country KH
-                formatTag("59", merchantName) +     // Name
-                formatTag("60", merchantCity);      // City
-
-            payload += "6304";
-            const crc = calculateCRC16(payload);
-            return payload + crc;
-        }
-
-        function renderQR() {
-            const qrBox = document.getElementById("qrContainer");
-            qrBox.innerHTML = "";
-            const khqrString = generateBakongKHQR();
-            new QRCode(qrBox, {
-                text: khqrString,
-                width: 180,
-                height: 180
-            });
-        }
-
-        function selectDepositAmount(amt, btnElement) {
-            selectedAmount = amt;
-            document.querySelectorAll(".amt-btn").forEach(b => b.classList.remove("active"));
-            if (btnElement) btnElement.classList.add("active");
-            document.getElementById("displayLockedAmount").innerText = `$${Number(amt).toFixed(2)}`;
-        }
-
-        function openTopUpModal() {
-            document.getElementById("topupModal").style.display = "flex";
-            renderQR();
-            document.getElementById("displayLockedAmount").innerText = `$${Number(selectedAmount).toFixed(2)}`;
-        }
-
-        function closeTopUpModal() {
-            document.getElementById("topupModal").style.display = "none";
-        }
-
-        function setCategory(cat) {
-            currentFilter = cat;
-            document.querySelectorAll(".filter-btn").forEach(btn => btn.classList.remove("active"));
-            event.target.classList.add("active");
-            filterMovies();
-        }
-
-        function filterMovies() {
-            const searchTxt = document.getElementById("searchInput").value.toLowerCase();
-            const filtered = movies.filter(m => {
-                const matchCat = (currentFilter === 'all') || (m.category === currentFilter);
-                const matchSearch = m.title.toLowerCase().includes(searchTxt);
-                return matchCat && matchSearch;
-            });
-            renderMovies(filtered);
-        }
-
-        // Run
-        updateBalanceDisplay();
-        renderMovies(movies);
-    </script>
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
 </body>
 </html>
