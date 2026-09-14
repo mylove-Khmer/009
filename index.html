@@ -13,8 +13,6 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- QRCode.js -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -24,61 +22,8 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect, useRef } = React;
+    const { useState, useEffect } = React;
 
-    // --- ផ្នែកបង្កើត BAKONG KHQR តាមស្តង់ដារ EMVCo របស់ធនាគារជាតិនៃកម្ពុជា ---
-    function emv(tag, val) {
-      if (!val) return '';
-      const len = String(val.length).padStart(2, '0');
-      return `${tag}${len}${val}`;
-    }
-
-    // CRC-16 / CCITT-FALSE (Polynomial 0x1021, Initial 0xFFFF)
-    function calculateCRC16(data) {
-      let crc = 0xFFFF;
-      for (let i = 0; i < data.length; i++) {
-        crc ^= (data.charCodeAt(i) << 8);
-        for (let j = 0; j < 8; j++) {
-          if ((crc & 0x8000) !== 0) {
-            crc = ((crc << 1) ^ 0x1021) & 0xFFFF;
-          } else {
-            crc = (crc << 1) & 0xFFFF;
-          }
-        }
-      }
-      return crc.toString(16).toUpperCase().padStart(4, '0');
-    }
-
-    // អនុគមន៍បង្កើត KHQR សម្រាប់គណនី samnang_mon@bkrt
-    function generateBakongKHQR(account, name, city, amount, billNo) {
-      // Tag 29: Merchant Account Information (Individual)
-      const subTag00 = emv('00', account); // bakong_account_id
-      const subTag01 = emv('01', 'bkrt');   // acquiring_bank
-      const tag29 = emv('29', subTag00 + subTag01);
-
-      // Tag 62: Additional Data Field (Bill Number / Reference)
-      const subBill = emv('01', billNo);
-      const subStore = emv('03', 'AngkorDC');
-      const tag62 = emv('62', subBill + subStore);
-
-      let payload = 
-        emv('00', '01') +                          // Format Indicator
-        emv('01', '12') +                          // Point of Initiation (12 = Dynamic)
-        tag29 +                                    // Tag 29
-        emv('52', '5999') +                        // Merchant Category Code
-        emv('53', '840') +                         // 840 = USD
-        emv('54', parseFloat(amount).toFixed(2)) + // ចំនួនទឹកប្រាក់
-        emv('58', 'KH') +                          // Country Code
-        emv('59', name) +                          // Merchant Name
-        emv('60', city) +                          // City
-        tag62 +                                    // Tag 62
-        '6304';                                    // Tag 63 (CRC Tag)
-
-      const checksum = calculateCRC16(payload);
-      return payload + checksum;
-    }
-
-    // ទិន្នន័យភាពយន្តគំរូ
     const MOVIES = [
       { id: 1, title: "The Last Ritual", img: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&q=80" },
       { id: 2, title: "Horror Night", img: "https://images.unsplash.com/photo-1518676590629-3dcbd9c5a5c9?w=500&q=80" },
@@ -90,7 +35,6 @@
       const [currentTab, setCurrentTab] = useState('home');
       const [showTopUp, setShowTopUp] = useState(false);
 
-      // រក្សាទុកកាបូបលុយក្នុង Browser LocalStorage
       const [wallet, setWallet] = useState(() => {
         const saved = localStorage.getItem('user_wallet');
         return saved ? JSON.parse(saved) : {
@@ -133,7 +77,6 @@
 
       return (
         <div className="max-w-md mx-auto min-h-screen bg-[#0d0d0d] flex flex-col justify-between relative shadow-2xl pb-20 border-x border-neutral-900">
-          {/* Top Bar */}
           <header className="flex items-center justify-between px-4 py-3 sticky top-0 bg-[#0d0d0d]/95 backdrop-blur border-b border-neutral-900 z-40">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 bg-amber-500 rounded flex items-center justify-center font-black text-black text-sm">A</div>
@@ -146,7 +89,6 @@
             </div>
           </header>
 
-          {/* Body Pages */}
           <main className="flex-1">
             {currentTab === 'home' && <HomePage onWatch={() => setCurrentTab('movies')} />}
             {currentTab === 'movies' && <MoviesPage />}
@@ -154,7 +96,6 @@
             {currentTab === 'library' && <LibraryPage />}
           </main>
 
-          {/* Bottom Bar Navigation */}
           <nav className="fixed bottom-0 max-w-md w-full bg-[#141414] border-t border-neutral-800 flex justify-around py-2.5 z-40">
             {[
               { id: 'home', label: 'Home', icon: 'home' },
@@ -173,7 +114,6 @@
             ))}
           </nav>
 
-          {/* Top Up KHQR Modal */}
           {showTopUp && (
             <TopUpModal 
               onClose={() => setShowTopUp(false)} 
@@ -293,41 +233,18 @@
 
     function TopUpModal({ onClose, onSuccess }) {
       const [amount, setAmount] = useState('1.60');
-      const [qrString, setQrString] = useState('');
+      const [isPaying, setIsPaying] = useState(false);
       const [billNo, setBillNo] = useState('');
-      const qrRef = useRef(null);
 
-      const handleCreateQR = () => {
-        const generatedBill = 'WALLET-' + Math.floor(100000 + Math.random() * 900000);
-        setBillNo(generatedBill);
-
-        // បង្កើត Bakong KHQR String ផ្លូវការ
-        const khqr = generateBakongKHQR(
-          'samnang_mon@bkrt',
-          'SAMNANG MON',
-          'Phnom Penh',
-          amount,
-          generatedBill
-        );
-        setQrString(khqr);
+      const handleProceed = () => {
+        setBillNo('WALLET-' + Math.floor(100000 + Math.random() * 900000));
+        setIsPaying(true);
       };
-
-      useEffect(() => {
-        if (qrString && qrRef.current) {
-          qrRef.current.innerHTML = '';
-          new QRCode(qrRef.current, {
-            text: qrString,
-            width: 175,
-            height: 175,
-            correctLevel: QRCode.CorrectLevel.M
-          });
-        }
-      }, [qrString]);
 
       return (
         <div className="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50">
           <div className="bg-[#171717] border border-neutral-800 rounded-2xl p-5 w-full max-w-xs text-center shadow-2xl">
-            {!qrString ? (
+            {!isPaying ? (
               <div>
                 <h3 className="text-base font-bold text-white mb-2">បញ្ចូលទឹកប្រាក់ (Top Up)</h3>
                 <p className="text-neutral-400 text-xs mb-4">ជ្រើសរើសចំនួនទឹកប្រាក់ ($ USD)</p>
@@ -347,7 +264,7 @@
                 </div>
 
                 <button
-                  onClick={handleCreateQR}
+                  onClick={handleProceed}
                   className="w-full bg-amber-400 hover:bg-amber-500 text-black font-bold py-2.5 rounded-xl text-xs transition"
                 >
                   បន្តទូទាត់ ${amount}
@@ -360,19 +277,22 @@
                   BAKONG KHQR
                 </div>
                 
-                {/* ផ្ទាំងបង្ហាញ QR Code */}
-                <div className="bg-white p-2.5 rounded-xl mb-3 shadow-inner flex justify-center items-center" ref={qrRef}></div>
+                {/* បង្ហាញរូបភាព QR Code ពិតប្រាកដដែល Upload លើ GitHub */}
+                <div className="bg-white p-2 rounded-xl mb-3 shadow-inner flex justify-center items-center">
+                  <img 
+                    src="bakong-qr.jpg" 
+                    alt="Bakong KHQR" 
+                    className="w-44 h-44 object-contain rounded-lg"
+                    onError={(e) => {
+                      e.target.onerror = null; 
+                      e.target.src = "https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=samnang_mon@bkrt";
+                    }}
+                  />
+                </div>
 
                 <p className="text-xs font-bold text-neutral-200">SAMNANG MON</p>
                 <p className="text-amber-400 font-black text-xl my-0.5">${parseFloat(amount).toFixed(2)} USD</p>
                 <p className="text-neutral-400 text-[11px] mb-3">ស្កេនជាមួយ Bakong ឬគ្រប់ App ធនាគារ</p>
-
-                <a 
-                  href={`bakong://qr?qr=${encodeURIComponent(qrString)}`}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-xl text-xs font-bold mb-2 block"
-                >
-                  បើក Bakong App
-                </a>
                 
                 <button 
                   onClick={() => onSuccess(amount, billNo)}
