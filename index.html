@@ -29,11 +29,8 @@
       for (let c = 0; c < str.length; c++) {
         crc ^= str.charCodeAt(c) << 8;
         for (let i = 0; i < 8; i++) {
-          if (crc & 0x8000) {
-            crc = ((crc << 1) ^ 0x1021);
-          } else {
-            crc = crc << 1;
-          }
+          if (crc & 0x8000) crc = (crc << 1) ^ 0x1021;
+          else crc = crc << 1;
         }
       }
       return (crc & 0xFFFF).toString(16).toUpperCase().padStart(4, '0');
@@ -43,25 +40,44 @@
       const formattedAmount = parseFloat(amount).toFixed(2);
       const amtLength = formattedAmount.length < 10 ? '0' + formattedAmount.length : String(formattedAmount.length);
       const tag54 = `54${amtLength}${formattedAmount}`;
-
       const part1 = "00020101021230510016abaakhppxxx@abaa01151260903142910660208ABA Bank520465135303840";
       const part2 = "5802KH5911MON SAMNANG6012KAMPONG THOM624268380010PAYWAY@ABA0107195096202090324860766304";
-
       const rawPayload = part1 + tag54 + part2;
-      const checksum = crc16CCITT(rawPayload);
-      return rawPayload + checksum;
+      return rawPayload + crc16CCITT(rawPayload);
     }
 
+    // ទិន្នន័យរឿងគំរូដែលមាន Video MP4 ពិតប្រាកដស្រាប់
     const DEFAULT_MOVIES = [
-      { id: 1, title: "The Last Ritual", category: "New Release", originalPrice: 2.50, price: 1.60, views: 1420, img: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&q=80" },
-      { id: 2, title: "Horror Night", category: "Horror", originalPrice: 2.00, price: 1.60, views: 890, img: "https://images.unsplash.com/photo-1518676590629-3dcbd9c5a5c9?w=500&q=80" },
-      { id: 3, title: "The Dark Soul", category: "Drama", originalPrice: 3.00, price: 1.99, views: 2310, img: "https://images.unsplash.com/photo-1485846234645-a62644f84728?w=500&q=80" },
-      { id: 4, title: "Ancient Mystery", category: "Coming Soon", originalPrice: 2.50, price: 1.60, views: 450, img: "https://images.unsplash.com/photo-1478720568477-152d9b164e26?w=500&q=80" }
+      { 
+        id: 1, 
+        title: "The Last Ritual", 
+        originalPrice: 2.50, 
+        price: 1.60, 
+        views: 1420, 
+        img: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&q=80",
+        videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" 
+      },
+      { 
+        id: 2, 
+        title: "Horror Night", 
+        originalPrice: 2.00, 
+        price: 1.60, 
+        views: 890, 
+        img: "https://images.unsplash.com/photo-1518676590629-3dcbd9c5a5c9?w=500&q=80",
+        videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4" 
+      }
     ];
 
     function App() {
+      // ពិនិត្យមើលថាភ្ញៀវបានចុះឈ្មោះ ឬ Login រួចឬនៅ
+      const [currentUser, setCurrentUser] = useState(() => {
+        const saved = localStorage.getItem('current_user');
+        return saved ? JSON.parse(saved) : null;
+      });
+
       const [currentTab, setCurrentTab] = useState('home');
       const [showTopUp, setShowTopUp] = useState(false);
+      const [playingMovie, setPlayingMovie] = useState(null);
 
       const [movies, setMovies] = useState(() => {
         const saved = localStorage.getItem('app_movies');
@@ -72,6 +88,7 @@
         const saved = localStorage.getItem('user_wallet');
         return saved ? JSON.parse(saved) : {
           balance: 2.15,
+          purchasedMovieIds: [],
           transactions: [
             { id: 'ADC-696867-0066', date: '16 May 2026', type: 'expense', amount: 1.60 },
             { id: 'WALLET-696867-0006', date: '08 May 2026', type: 'income', amount: 6.99 }
@@ -79,7 +96,10 @@
         };
       });
 
-      // ធ្វើសមកាលកម្មទិន្នន័យពេល Admin ផ្លាស់ប្តូរ
+      useEffect(() => {
+        localStorage.setItem('user_wallet', JSON.stringify(wallet));
+      }, [wallet]);
+
       useEffect(() => {
         const handleStorage = () => {
           const m = localStorage.getItem('app_movies');
@@ -93,36 +113,86 @@
 
       useEffect(() => {
         if (window.lucide) window.lucide.createIcons();
-      }, [currentTab, showTopUp, movies]);
+      }, [currentTab, showTopUp, currentUser, playingMovie]);
 
-      const handleWatchMovie = (movieId) => {
-        const updated = movies.map(m => m.id === movieId ? { ...m, views: m.views + 1 } : m);
+      // មុខងារចុចមើលរឿង (Play Movie)
+      const handleWatch = (movie) => {
+        const isPurchased = wallet.purchasedMovieIds && wallet.purchasedMovieIds.includes(movie.id);
+        
+        // ប្រសិនបើរឿងមិនទាន់ទិញ
+        if (!isPurchased) {
+          if (wallet.balance < movie.price) {
+            alert(`សមតុល្យទឹកប្រាក់របស់អ្នកមិនគ្រប់គ្រាន់ (${wallet.balance.toFixed(2)}$)។ សូមបញ្ចូលទឹកប្រាក់ $${movie.price} ដើម្បីទស្សនា!`);
+            setShowTopUp(true);
+            return;
+          }
+          // កាត់លុយទិញសំបុត្រ
+          const confirmBuy = confirm(`រឿងនេះតម្លៃ $${movie.price.toFixed(2)}។ តើអ្នកចង់កាត់ទឹកប្រាក់ដើម្បីទស្សនាទេ?`);
+          if (!confirmBuy) return;
+
+          setWallet(prev => ({
+            ...prev,
+            balance: parseFloat((prev.balance - movie.price).toFixed(2)),
+            purchasedMovieIds: [...(prev.purchasedMovieIds || []), movie.id],
+            transactions: [
+              {
+                id: 'TICKET-' + Math.floor(100000 + Math.random() * 900000),
+                date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+                type: 'expense',
+                amount: movie.price
+              },
+              ...prev.transactions
+            ]
+          }));
+        }
+
+        // បង្កើនចំនួន Views
+        const updated = movies.map(m => m.id === movie.id ? { ...m, views: (m.views || 0) + 1 } : m);
         setMovies(updated);
         localStorage.setItem('app_movies', JSON.stringify(updated));
-        alert('កំពុងបើកដំណើរការចាក់បញ្ចាំងភាពយន្ត...');
+
+        // បើកផ្ទាំង Player
+        setPlayingMovie(movie);
       };
+
+      // ប្រសិនបើភ្ញៀវមិនទាន់ចុះឈ្មោះ/Login ត្រូវបង្ហាញផ្ទាំង Auth ជាមុនសិន
+      if (!currentUser) {
+        return <AuthScreen onLoginSuccess={(user) => setCurrentUser(user)} />;
+      }
 
       return (
         <div className="max-w-md mx-auto min-h-screen bg-[#0d0d0d] flex flex-col justify-between relative shadow-2xl pb-20 border-x border-neutral-900">
+          {/* Header */}
           <header className="flex items-center justify-between px-4 py-3 sticky top-0 bg-[#0d0d0d]/95 backdrop-blur border-b border-neutral-900 z-40">
             <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentTab('home')}>
               <div className="w-7 h-7 bg-amber-500 rounded flex items-center justify-center font-black text-black text-sm">A</div>
               <span className="text-lg font-bold tracking-wide text-white">Angkor DC</span>
             </div>
-            <div className="flex items-center gap-4 text-neutral-300">
-              <i data-lucide="search" className="w-5 h-5 cursor-pointer"></i>
-              <i data-lucide="bell" className="w-5 h-5 cursor-pointer"></i>
-              <i data-lucide="user" className="w-5 h-5 cursor-pointer"></i>
+            <div className="flex items-center gap-3 text-neutral-300">
+              <span className="text-xs font-semibold text-amber-400">👤 {currentUser.name}</span>
+              <button 
+                onClick={() => {
+                  if (confirm('តើអ្នកចង់ចាកចេញ (Logout) មែនទេ?')) {
+                    localStorage.removeItem('current_user');
+                    setCurrentUser(null);
+                  }
+                }}
+                className="text-[10px] bg-neutral-800 hover:bg-neutral-700 px-2 py-1 rounded text-neutral-400"
+              >
+                Logout
+              </button>
             </div>
           </header>
 
+          {/* Body Pages */}
           <main className="flex-1">
-            {currentTab === 'home' && <HomePage movies={movies} onWatch={handleWatchMovie} />}
-            {currentTab === 'movies' && <MoviesPage movies={movies} onWatch={handleWatchMovie} />}
+            {currentTab === 'home' && <HomePage movies={movies} onWatch={handleWatch} />}
+            {currentTab === 'movies' && <MoviesPage movies={movies} onWatch={handleWatch} />}
             {currentTab === 'wallet' && <WalletPage wallet={wallet} onOpenTopUp={() => setShowTopUp(true)} />}
-            {currentTab === 'library' && <LibraryPage movies={movies} />}
+            {currentTab === 'library' && <LibraryPage movies={movies} wallet={wallet} onWatch={handleWatch} />}
           </main>
 
+          {/* Bottom Bar Navigation */}
           <nav className="fixed bottom-0 max-w-md w-full bg-[#141414] border-t border-neutral-800 flex justify-around py-2.5 z-40">
             {[
               { id: 'home', label: 'Home', icon: 'home' },
@@ -141,7 +211,102 @@
             ))}
           </nav>
 
+          {/* Modal Play Video Player */}
+          {playingMovie && (
+            <VideoPlayerModal movie={playingMovie} onClose={() => setPlayingMovie(null)} />
+          )}
+
+          {/* Modal KHQR Top Up */}
           {showTopUp && <TopUpModal onClose={() => setShowTopUp(false)} />}
+        </div>
+      );
+    }
+
+    // ផ្ទាំងចុះឈ្មោះ ឬ Login សម្រាប់ភ្ញៀវ
+    function AuthScreen({ onLoginSuccess }) {
+      const [isRegister, setIsRegister] = useState(false);
+      const [name, setName] = useState('');
+      const [phone, setPhone] = useState('');
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!name || !phone) return alert('សូមបំពេញឈ្មោះ និងលេខទូរស័ព្ទ');
+        const user = { name, phone };
+        localStorage.setItem('current_user', JSON.stringify(user));
+        onLoginSuccess(user);
+      };
+
+      return (
+        <div className="min-h-screen bg-[#0d0d0d] flex items-center justify-center p-4">
+          <form onSubmit={handleSubmit} className="bg-[#171717] border border-neutral-800 p-6 rounded-2xl w-full max-w-sm text-center shadow-2xl">
+            <div className="w-12 h-12 bg-amber-500 rounded-full flex items-center justify-center mx-auto mb-3 text-black font-black text-xl">A</div>
+            <h2 className="text-xl font-black text-white mb-1">Angkor DC</h2>
+            <p className="text-xs text-neutral-400 mb-6">{isRegister ? 'ចុះឈ្មោះបង្កើតគណនីថ្មី' : 'សូមចូលប្រើប្រាស់ដើម្បីទស្សនាភាពយន្ត'}</p>
+
+            <div className="space-y-3 mb-5 text-left">
+              <div>
+                <label className="text-[11px] text-neutral-400 block mb-1">ឈ្មោះរបស់អ្នក</label>
+                <input
+                  type="text"
+                  placeholder="ឧ. សុខ សាន"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  className="w-full bg-[#111] border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] text-neutral-400 block mb-1">លេខទូរស័ព្ទ</label>
+                <input
+                  type="tel"
+                  placeholder="012 345 678"
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
+                  className="w-full bg-[#111] border border-neutral-700 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
+                />
+              </div>
+            </div>
+
+            <button type="submit" className="w-full bg-amber-400 hover:bg-amber-500 text-black font-bold py-2.5 rounded-xl text-xs transition mb-3">
+              {isRegister ? 'ចុះឈ្មោះភ្លាមៗ' : 'ចូលទស្សនា (Login)'}
+            </button>
+
+            <button type="button" onClick={() => setIsRegister(!isRegister)} className="text-[11px] text-neutral-400 hover:text-amber-400">
+              {isRegister ? 'មានគណនីរួចហើយ? ចូលប្រើប្រាស់' : 'មិនទាន់មានគណនី? ចុចចុះឈ្មោះនៅទីនេះ'}
+            </button>
+          </form>
+        </div>
+      );
+    }
+
+    // ផ្ទាំងចាក់បញ្ចាំងវីដេអូរឿង (Video Player Modal)
+    function VideoPlayerModal({ movie, onClose }) {
+      return (
+        <div className="fixed inset-0 bg-black z-50 flex flex-col justify-center items-center">
+          <div className="w-full max-w-2xl bg-black relative flex flex-col">
+            <div className="flex justify-between items-center px-4 py-3 bg-neutral-900 border-b border-neutral-800">
+              <h3 className="font-bold text-sm text-white truncate">{movie.title}</h3>
+              <button onClick={onClose} className="text-neutral-400 hover:text-white text-xs bg-neutral-800 px-3 py-1 rounded-lg">✕ បិទ</button>
+            </div>
+            
+            {/* ឧបករណ៍ចាក់វីដេអូ Player */}
+            <div className="w-full aspect-video bg-black flex items-center justify-center">
+              {movie.videoUrl ? (
+                <video 
+                  src={movie.videoUrl} 
+                  controls 
+                  autoPlay 
+                  className="w-full h-full object-contain"
+                >
+                  កម្មវិធីរុករករបស់អ្នកមិនគាំទ្រការចាក់វីដេអូនេះទេ។
+                </video>
+              ) : (
+                <div className="text-center text-neutral-500 p-4">
+                  <p className="text-sm">រឿងនេះមិនទាន់មាន Link វីដេអូនៅឡើយទេ។</p>
+                  <p className="text-xs mt-1">សូមឱ្យ Admin ចូលទៅកែសម្រួលដាក់ Link វីដេអូក្នុង admin.html</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       );
     }
@@ -157,13 +322,11 @@
               <h1 className="text-2xl font-black tracking-widest text-red-500 drop-shadow-md uppercase text-center px-4">{featured.title}</h1>
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-amber-400 font-bold text-base">${parseFloat(featured.price || 1.60).toFixed(2)}</span>
-                {featured.originalPrice && (
-                  <span className="text-neutral-500 line-through text-xs">${parseFloat(featured.originalPrice).toFixed(2)}</span>
-                )}
+                {featured.originalPrice && <span className="text-neutral-500 line-through text-xs">${parseFloat(featured.originalPrice).toFixed(2)}</span>}
                 <span className="text-neutral-400 text-xs ml-2">👁️ {featured.views} Views</span>
               </div>
-              <button onClick={() => onWatch(featured.id)} className="bg-amber-400 hover:bg-amber-500 text-black font-bold px-8 py-2.5 rounded-full shadow-lg transition text-sm">
-                Watch Movie
+              <button onClick={() => onWatch(featured)} className="bg-amber-400 hover:bg-amber-500 text-black font-bold px-8 py-2.5 rounded-full shadow-lg transition text-sm flex items-center gap-2">
+                <span>▶ Watch Movie</span>
               </button>
             </div>
           </div>
@@ -174,7 +337,7 @@
             </h2>
             <div className="flex gap-3 overflow-x-auto no-scrollbar py-1">
               {movies.map(m => (
-                <div key={m.id} onClick={() => onWatch(m.id)} className="flex-none w-32 rounded-lg overflow-hidden bg-neutral-900 border border-neutral-800 cursor-pointer">
+                <div key={m.id} onClick={() => onWatch(m)} className="flex-none w-32 rounded-lg overflow-hidden bg-neutral-900 border border-neutral-800 cursor-pointer">
                   <div className="relative">
                     <img src={m.img} className="w-full h-44 object-cover" />
                     {m.originalPrice > m.price && (
@@ -205,7 +368,7 @@
           <h1 className="text-base font-bold text-center text-white mb-4">All Movies</h1>
           <div className="grid grid-cols-2 gap-3">
             {movies.map(m => (
-              <div key={m.id} onClick={() => onWatch(m.id)} className="rounded-lg overflow-hidden bg-neutral-900 border border-neutral-800 cursor-pointer">
+              <div key={m.id} onClick={() => onWatch(m)} className="rounded-lg overflow-hidden bg-neutral-900 border border-neutral-800 cursor-pointer">
                 <img src={m.img} className="w-full h-48 object-cover" />
                 <div className="p-2.5">
                   <p className="text-xs font-bold truncate text-white">{m.title}</p>
@@ -213,7 +376,7 @@
                     <span className="text-amber-400 font-bold text-xs">${parseFloat(m.price).toFixed(2)}</span>
                     {m.originalPrice && <span className="text-neutral-500 line-through text-[10px]">${parseFloat(m.originalPrice).toFixed(2)}</span>}
                   </div>
-                  <p className="text-[10px] text-neutral-400 mt-1">👁️ {m.views} នាក់បានទស្សនា</p>
+                  <p className="text-[10px] text-neutral-400 mt-1">👁️ {m.views} នាក់មើល</p>
                 </div>
               </div>
             ))}
@@ -258,17 +421,26 @@
       );
     }
 
-    function LibraryPage({ movies }) {
+    function LibraryPage({ movies, wallet, onWatch }) {
+      const purchased = movies.filter(m => wallet.purchasedMovieIds && wallet.purchasedMovieIds.includes(m.id));
       return (
         <div className="p-4">
-          <h1 className="text-base font-bold text-center text-white mb-4">My Library</h1>
-          <div className="grid grid-cols-3 gap-2.5">
-            {movies.slice(0, 3).map(m => (
-              <div key={m.id} className="rounded-lg overflow-hidden bg-neutral-900 border border-neutral-800">
-                <img src={m.img} className="w-full h-40 object-cover" />
-              </div>
-            ))}
-          </div>
+          <h1 className="text-base font-bold text-center text-white mb-4">My Library (រឿងបានទិញរួច)</h1>
+          {purchased.length === 0 ? (
+            <p className="text-xs text-center text-neutral-500 py-10">អ្នកមិនទាន់បានទិញភាពយន្តណាមួយនៅឡើយទេ។</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {purchased.map(m => (
+                <div key={m.id} onClick={() => onWatch(m)} className="rounded-lg overflow-hidden bg-neutral-900 border border-amber-400/40 cursor-pointer">
+                  <img src={m.img} className="w-full h-44 object-cover" />
+                  <div className="p-2">
+                    <p className="text-xs font-bold text-white truncate">{m.title}</p>
+                    <span className="text-[10px] text-amber-400 font-bold block mt-0.5">▶ ចុចទស្សនា</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       );
     }
@@ -284,12 +456,8 @@
       const activeAmount = customAmount ? customAmount : selectedAmount;
 
       const handleProceed = () => {
-        if (!activeAmount || parseFloat(activeAmount) <= 0) {
-          alert('សូមជ្រើសរើស ឬវាយបញ្ចូលចំនួនទឹកប្រាក់ឱ្យបានត្រឹមត្រូវ');
-          return;
-        }
-        const dynamicQR = buildDynamicKHQR(activeAmount);
-        setKhqrString(dynamicQR);
+        if (!activeAmount || parseFloat(activeAmount) <= 0) return alert('សូមជ្រើសរើសចំនួនទឹកប្រាក់');
+        setKhqrString(buildDynamicKHQR(activeAmount));
         setIsPaying(true);
       };
 
@@ -312,16 +480,13 @@
               <div className="p-6 bg-neutral-900 text-white rounded-t-3xl sm:rounded-3xl">
                 <h3 className="text-base font-bold mb-1">Top up wallet</h3>
                 <p className="text-neutral-400 text-xs mb-4">Select an amount to top up your wallet.</p>
-                
                 <div className="grid grid-cols-3 gap-2 mb-3">
                   {presetAmounts.map(val => (
                     <button
                       key={val}
                       onClick={() => { setSelectedAmount(val); setCustomAmount(''); }}
                       className={`py-2.5 rounded-xl border text-xs font-bold transition flex flex-col items-center justify-center ${
-                        selectedAmount === val && !customAmount
-                          ? 'border-amber-400 bg-amber-400/15 text-amber-400 shadow-md scale-105' 
-                          : 'border-neutral-800 bg-[#161616] text-neutral-300 hover:border-neutral-700'
+                        selectedAmount === val && !customAmount ? 'border-amber-400 bg-amber-400/15 text-amber-400 scale-105' : 'border-neutral-800 bg-[#161616] text-neutral-300'
                       }`}
                     >
                       <span>${val}</span>
@@ -329,29 +494,18 @@
                     </button>
                   ))}
                 </div>
-
                 <div className="mb-5">
                   <label className="text-[11px] text-neutral-400 block mb-1.5 font-medium">ឬវាយបញ្ចូលចំនួនទឹកប្រាក់ ($ USD)</label>
-                  <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400 font-bold text-sm">$</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={customAmount}
-                      onChange={(e) => {
-                        setCustomAmount(e.target.value);
-                        setSelectedAmount('');
-                      }}
-                      className="w-full bg-[#161616] border border-neutral-700 rounded-xl pl-8 pr-4 py-2.5 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-amber-400 transition"
-                    />
-                  </div>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    value={customAmount}
+                    onChange={(e) => { setCustomAmount(e.target.value); setSelectedAmount(''); }}
+                    className="w-full bg-[#161616] border border-neutral-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-400"
+                  />
                 </div>
-
-                <button
-                  onClick={handleProceed}
-                  className="w-full bg-amber-400 hover:bg-amber-500 text-black font-bold py-3 rounded-xl text-xs transition shadow-lg"
-                >
+                <button onClick={handleProceed} className="w-full bg-amber-400 hover:bg-amber-500 text-black font-bold py-3 rounded-xl text-xs transition shadow-lg">
                   បន្តទៅការទូទាត់ ${parseFloat(activeAmount || 0).toFixed(2)}
                 </button>
                 <button onClick={onClose} className="text-neutral-500 text-xs mt-3 block w-full text-center hover:text-neutral-300">បោះបង់</button>
@@ -362,7 +516,6 @@
                   <div className="w-10 h-1 bg-white/40 rounded-full mx-auto mb-2"></div>
                   <h2 className="text-xl font-black tracking-wider uppercase">KHQR</h2>
                 </div>
-
                 <div className="pt-4 pb-2 px-6 text-center">
                   <p className="text-xs font-medium text-gray-500">MON SAMNANG</p>
                   <div className="flex items-baseline justify-center gap-1 mt-1">
@@ -370,12 +523,10 @@
                     <span className="text-xs font-bold text-gray-500">USD</span>
                   </div>
                 </div>
-
                 <div className="relative my-2 border-b-2 border-dashed border-gray-200">
                   <div className="w-4 h-4 bg-[#0d0d0d] rounded-full absolute -left-2 -top-2"></div>
                   <div className="w-4 h-4 bg-[#0d0d0d] rounded-full absolute -right-2 -top-2"></div>
                 </div>
-
                 <div className="flex flex-col items-center justify-center p-4">
                   <div className="relative p-2 bg-white rounded-xl shadow-sm border border-gray-100 flex items-center justify-center">
                     <div ref={qrRef} className="flex items-center justify-center"></div>
@@ -387,10 +538,8 @@
                       </svg>
                     </div>
                   </div>
-
                   <p className="font-bold text-sm text-gray-800 mt-3">Scan to Pay</p>
                   <p className="text-xs text-gray-400 my-0.5">or</p>
-                  
                   <button 
                     onClick={() => {
                       const canvas = qrRef.current.querySelector('canvas');
@@ -406,20 +555,12 @@
                     <i data-lucide="download" className="w-3.5 h-3.5"></i>
                     <span>Download QR</span>
                   </button>
-                  <p className="text-[10px] text-gray-400 mt-1 max-w-[200px] text-center leading-tight">
-                    and upload to Mobile Banking app supporting KHQR
-                  </p>
                 </div>
-
                 <div className="px-6 pb-5 pt-2">
-                  <button 
-                    onClick={onClose} 
-                    className="w-full py-2.5 rounded-xl border border-neutral-300 text-gray-600 text-xs font-semibold hover:bg-gray-50 transition"
-                  >
+                  <button onClick={onClose} className="w-full py-2.5 rounded-xl border border-neutral-300 text-gray-600 text-xs font-semibold hover:bg-gray-50 transition">
                     បិទផ្ទាំង
                   </button>
                 </div>
-
               </div>
             )}
           </div>
