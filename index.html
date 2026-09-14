@@ -13,6 +13,8 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- QRCode.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -22,9 +24,43 @@
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect } = React;
+    const { useState, useEffect, useRef } = React;
 
-    // ទិន្នន័យភាពយន្ត
+    // កូដ KHQR ផ្លូវការរបស់ MON SAMNANG
+    const OFFICIAL_STATIC_KHQR = "00020101021130510016abaakhppxxx@abaa01151260903142910660208ABA Bank5204651353038405802KH5911MON SAMNANG6012KAMPONG THOM624268380010PAYWAY@ABA01071950962020903248607663044150";
+
+    // អនុគមន៍គណនា CRC16 សម្រាប់ Dynamic Amount
+    function crc16(str) {
+      let crc = 0xFFFF;
+      for (let i = 0; i < str.length; i++) {
+        crc ^= (str.charCodeAt(i) << 8);
+        for (let j = 0; j < 8; j++) {
+          if ((crc & 0x8000) !== 0) {
+            crc = ((crc << 1) ^ 0x1021) & 0xFFFF;
+          } else {
+            crc = (crc << 1) & 0xFFFF;
+          }
+        }
+      }
+      return crc.toString(16).toUpperCase().padStart(4, '0');
+    }
+
+    // អនុគមន៍បញ្ជូនកូដ KHQR ជាមួយចំនួនទឹកប្រាក់
+    function getMerchantKHQR(amount) {
+      const amtStr = parseFloat(amount).toFixed(2);
+      const amtTag = '54' + (amtStr.length < 10 ? '0' + amtStr.length : amtStr.length) + amtStr;
+      
+      // បំប្លែង Tag 01 ពី 11 (Static) ទៅ 12 (Dynamic)
+      let base = OFFICIAL_STATIC_KHQR.slice(0, -4);
+      base = base.replace('010211', '010212');
+      
+      // បញ្ចូល Tag 54 (Amount) បន្ទាប់ពី Tag 53 (Currency 840)
+      const currencyIndex = base.indexOf('5303840') + 7;
+      const payloadWithoutCrc = base.slice(0, currencyIndex) + amtTag + base.slice(currencyIndex);
+      
+      return payloadWithoutCrc + crc16(payloadWithoutCrc);
+    }
+
     const MOVIES = [
       { id: 1, title: "The Last Ritual", img: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=500&q=80" },
       { id: 2, title: "Horror Night", img: "https://images.unsplash.com/photo-1518676590629-3dcbd9c5a5c9?w=500&q=80" },
@@ -91,7 +127,7 @@
             </div>
           </header>
 
-          {/* Main Content */}
+          {/* Body Pages */}
           <main className="flex-1">
             {currentTab === 'home' && <HomePage onWatch={() => setCurrentTab('movies')} />}
             {currentTab === 'movies' && <MoviesPage />}
@@ -99,7 +135,7 @@
             {currentTab === 'library' && <LibraryPage />}
           </main>
 
-          {/* Bottom Nav */}
+          {/* Bottom Bar Navigation */}
           <nav className="fixed bottom-0 max-w-md w-full bg-[#141414] border-t border-neutral-800 flex justify-around py-2.5 z-40">
             {[
               { id: 'home', label: 'Home', icon: 'home' },
@@ -238,21 +274,35 @@
 
     function TopUpModal({ onClose, onSuccess }) {
       const [amount, setAmount] = useState('1.60');
-      const [isPaying, setIsPaying] = useState(false);
+      const [qrString, setQrString] = useState('');
       const [billNo, setBillNo] = useState('');
+      const qrRef = useRef(null);
 
-      // Link QR ស្វ័យប្រវត្តិតាម Deep Link របស់ Bakong
-      const bakongQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent('bakong://qr?account=samnang_mon@bkrt&name=SAMNANG%20MON&amount=' + amount)}`;
-
-      const handleProceed = () => {
-        setBillNo('WALLET-' + Math.floor(100000 + Math.random() * 900000));
-        setIsPaying(true);
+      const handleCreateQR = () => {
+        const generatedBill = 'ADC-' + Math.floor(100000 + Math.random() * 900000);
+        setBillNo(generatedBill);
+        
+        // ទាញយក KHQR ពិតប្រាកដដែលផ្ទៀងផ្ទាត់ដោយ ABA
+        const finalKHQR = getMerchantKHQR(amount);
+        setQrString(finalKHQR);
       };
+
+      useEffect(() => {
+        if (qrString && qrRef.current) {
+          qrRef.current.innerHTML = '';
+          new QRCode(qrRef.current, {
+            text: qrString,
+            width: 180,
+            height: 180,
+            correctLevel: QRCode.CorrectLevel.M
+          });
+        }
+      }, [qrString]);
 
       return (
         <div className="fixed inset-0 bg-black/85 flex items-center justify-center p-4 z-50">
           <div className="bg-[#171717] border border-neutral-800 rounded-2xl p-5 w-full max-w-xs text-center shadow-2xl">
-            {!isPaying ? (
+            {!qrString ? (
               <div>
                 <h3 className="text-base font-bold text-white mb-2">បញ្ចូលទឹកប្រាក់ (Top Up)</h3>
                 <p className="text-neutral-400 text-xs mb-4">ជ្រើសរើសចំនួនទឹកប្រាក់ ($ USD)</p>
@@ -272,7 +322,7 @@
                 </div>
 
                 <button
-                  onClick={handleProceed}
+                  onClick={handleCreateQR}
                   className="w-full bg-amber-400 hover:bg-amber-500 text-black font-bold py-2.5 rounded-xl text-xs transition"
                 >
                   បន្តទូទាត់ ${amount}
@@ -281,29 +331,16 @@
               </div>
             ) : (
               <div className="flex flex-col items-center">
-                <div className="bg-red-600 text-white font-black px-4 py-0.5 rounded-t text-[10px] tracking-wider mb-2">
-                  BAKONG KHQR
+                <div className="bg-[#004e7c] text-white font-black px-4 py-0.5 rounded-t text-[10px] tracking-wider mb-2">
+                  ABA PAY / BAKONG KHQR
                 </div>
                 
-                {/* បង្កើត QR ដោយផ្ទាល់ ស្វ័យប្រវត្តិតាម Account samnang_mon@bkrt */}
-                <div className="bg-white p-2.5 rounded-xl mb-3 shadow-inner flex justify-center items-center">
-                  <img 
-                    src={bakongQrUrl} 
-                    alt="KHQR Code" 
-                    className="w-44 h-44 object-contain"
-                  />
-                </div>
+                {/* ផ្ទាំងបង្ហាញ QR Code ពិតប្រាកដ */}
+                <div className="bg-white p-2.5 rounded-xl mb-3 shadow-inner flex justify-center items-center" ref={qrRef}></div>
 
-                <p className="text-xs font-bold text-neutral-200">SAMNANG MON</p>
+                <p className="text-xs font-bold text-neutral-200">MON SAMNANG</p>
                 <p className="text-amber-400 font-black text-xl my-0.5">${parseFloat(amount).toFixed(2)} USD</p>
-                <p className="text-neutral-400 text-[11px] mb-3">ស្កេនជាមួយ Bakong ឬ ABA Mobile</p>
-                
-                <a 
-                  href={`bakong://qr?account=samnang_mon@bkrt&amount=${amount}`}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-xl text-xs font-bold mb-2 block"
-                >
-                  បើកក្នុង Bakong App
-                </a>
+                <p className="text-neutral-400 text-[11px] mb-3 font-mono">{billNo}</p>
 
                 <button 
                   onClick={() => onSuccess(amount, billNo)}
